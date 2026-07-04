@@ -957,7 +957,19 @@ setInterval(load, 15*60*1000); // auto-refresh every 15 min
 
 // PWA service worker (no-ops in the artifact sandbox; works when deployed)
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+  window.addEventListener("load",()=>{
+    const hadController = !!navigator.serviceWorker.controller;
+    // updateViaCache:"none" -> always revalidate sw.js itself, so new deploys are seen fast
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"})
+      .then(reg=>{ reg.update(); })
+      .catch(()=>{});
+    // when a newly-installed SW takes control, reload once to show the latest build
+    let refreshing=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+      if(refreshing || !hadController) return;   // skip the very first install
+      refreshing=true; location.reload();
+    });
+  });
 }
 </script>
 </body>

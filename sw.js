@@ -1,5 +1,11 @@
-/* CragCast service worker — app shell offline, weather network-first */
-const SHELL = "cragcast-shell-v1";
+/* CragCast service worker
+   - HTML / navigations: network-first (revalidated) so a fresh deploy always
+     wins when online; falls back to the cached shell only when offline.
+   - Other same-origin assets (icons, manifest): stale-while-revalidate.
+   - Weather API: network-first, fall back to last good response offline.
+   Bump VERSION on each deploy to guarantee old caches are cleared. */
+const VERSION = "2026-07-03";
+const SHELL = "cragcast-shell-" + VERSION;
 const DATA  = "cragcast-data-v1";
 const ASSETS = [
   "./", "./index.html", "./manifest.webmanifest",
@@ -18,23 +24,55 @@ self.addEventListener("activate", e => {
   );
 });
 
+function isHTML(req){
+  if (req.mode === "navigate") return true;
+  const accept = req.headers.get("accept") || "";
+  return req.method === "GET" && accept.includes("text/html");
+}
+
 self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
+  const req = e.request;
+  const url = new URL(req.url);
 
   // Weather API: network-first, fall back to last good response when offline.
   if (url.hostname.endsWith("open-meteo.com")) {
     e.respondWith(
-      fetch(e.request).then(res => {
+      fetch(req).then(res => {
         const copy = res.clone();
-        caches.open(DATA).then(c => c.put(e.request, copy));
+        caches.open(DATA).then(c => c.put(req, copy));
         return res;
-      }).catch(() => caches.match(e.request))
+      }).catch(() => caches.match(req))
     );
     return;
   }
 
-  // App shell: cache-first.
-  if (e.request.method === "GET" && url.origin === self.location.origin) {
-    e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
+  // Only handle our own GET requests below.
+  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // HTML / navigations: network-first. `cache: "no-cache"` forces a revalidation
+  // so we bypass the CDN's HTML cache and always pick up the newest deploy.
+  if (isHTML(req)) {
+    e.respondWith(
+      fetch(req, { cache: "no-cache" }).then(res => {
+        const copy = res.clone();
+        caches.open(SHELL).then(c => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req).then(hit => hit || caches.match("./index.html")))
+    );
+    return;
   }
+
+  // Static assets: stale-while-revalidate — serve cache instantly, refresh in the
+  // background so the next load has the latest.
+  e.respondWith(
+    caches.match(req).then(hit => {
+      const network = fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(SHELL).then(c => c.put(req, copy));
+        return res;
+      }).catch(() => hit);
+      if (hit) e.waitUntil(network);   // keep the background refresh alive
+      return hit || network;
+    })
+  );
 });
