@@ -63,15 +63,14 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .refresh.spin svg{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ---- best bet banner ---- */
-.bestbet{position:relative;border:1px solid var(--line-strong);border-radius:16px;padding:14px 16px;margin-bottom:16px;
+/* ---- per-area best bet ---- */
+.areabest{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  border:1px solid var(--line-strong);border-radius:12px;padding:9px 14px;margin:0 2px 10px;
   background:linear-gradient(180deg,var(--card2),var(--card));box-shadow:var(--shadow);overflow:hidden}
-.bestbet .eye{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint)}
-.bestbet .line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px}
-.bestbet .pick{font-size:19px;font-weight:600;letter-spacing:.01em}
-.bestbet .pick b{color:var(--prime)}
-.bestbet .sub{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim)}
-.bestbet .accent{position:absolute;inset:0 auto 0 0;width:4px;background:var(--prime)}
+.areabest .accent{position:absolute;inset:0 auto 0 0;width:3px;background:var(--prime)}
+.areabest .eye{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+.areabest .pick{font-size:15px;font-weight:600;letter-spacing:.01em}
+.areabest .sub{font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.04em;margin-left:auto}
 
 /* ---- area block ---- */
 .area{margin:0 0 20px}
@@ -152,8 +151,14 @@ footer a{color:var(--ink-dim)}
 
 /* ---- controls: date filter + search ---- */
 .controls{display:flex;flex-direction:column;gap:9px;margin:0 2px 15px}
-.datebar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none}
+#dateSentinel{height:1px;margin-bottom:-1px}
+.datebar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 0 3px;scrollbar-width:none;
+  position:sticky;top:0;z-index:40;border-radius:0 0 12px 12px;
+  transition:padding .18s ease,background .18s ease,box-shadow .18s ease}
 .datebar::-webkit-scrollbar{display:none}
+/* floats once you scroll past it */
+.datebar.floating{padding:9px 0;background:rgba(16,21,28,.86);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 12px 26px -14px rgba(0,0,0,.7);border-bottom:1px solid var(--line-strong)}
 .datepill{flex:none;background:var(--card);border:1px solid var(--line-strong);border-radius:11px;padding:6px 11px;cursor:pointer;
   font-family:var(--mono);text-align:center;color:var(--ink-dim);min-width:54px;line-height:1;transition:border-color .15s,background .15s}
 .datepill:hover{color:var(--ink)}
@@ -235,6 +240,7 @@ footer a{color:var(--ink-dim)}
   </header>
 
   <div class="controls">
+    <div id="dateSentinel" aria-hidden="true"></div>
     <div class="datebar" id="datebar" role="group" aria-label="Forecast date"></div>
     <div class="searchbox" id="searchbox">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -243,7 +249,6 @@ footer a{color:var(--ink-dim)}
     </div>
   </div>
 
-  <div id="bestbet"></div>
   <div id="content"></div>
 
   <footer>
@@ -573,7 +578,7 @@ function dayWindows(hourly){
 
 /* ---------------- render ---------------- */
 const $=s=>document.querySelector(s);
-const content=$("#content"), bestEl=$("#bestbet");
+const content=$("#content");
 const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function nowSample(d){
@@ -662,25 +667,6 @@ function cragMatches(area,c){
 
 function render(all){
   const whenLabel = isSelToday() ? "right now" : SELECTED_DATE.toLocaleDateString([], {weekday:"short", month:"short", day:"numeric"});
-  // best bet across every (matching) crag for the selected date
-  let best=null;
-  for(const d of all){ if(d.error) continue;
-    const s=sampleForDate(d);
-    for(const c of d.area.crags){ if(!cragMatches(d.area,c)) continue;
-      const r=scoreCrag(c,s);
-      if(!best||r.score>best.r.score) best={area:d.area,crag:c,r,s}; }
-  }
-  if(best){
-    const b=best.r.bucket;
-    bestEl.innerHTML=`<div class="bestbet"><span class="accent" style="background:${b.c}"></span>
-      <div class="eye">Best bet · ${whenLabel}</div>
-      <div class="line">
-        <span class="pick"><b style="color:${b.c}">${best.area.name}</b> · ${best.crag.name}</span>
-        <span class="sub" style="color:${b.c}">${b.w} · ${best.r.score}</span>
-      </div>
-      <div class="sub" style="margin-top:5px">${r0(cvT(best.s.temp))}${uT()} · spread ${r0(cvT(best.s.temp)-cvT(best.s.dew))}${uT()} · ${best.s.precipNow>0.004?"raining":"dry"}</div>
-    </div>`;
-  } else bestEl.innerHTML="";
 
   content.innerHTML="";
   const searching = SEARCH.trim().length>0;
@@ -713,6 +699,20 @@ function render(all){
     head.innerHTML=`<h2>${area.name}</h2><span class="meta">${area.region}</span>
       <span class="rain" title="Rain over the past 5 days">${UNIT==="us"?rain5+'"':r1(rain5*25.4)+'mm'} / 5d <span class="spark">${spark}</span></span>`;
     wrap.appendChild(head);
+
+    // best bet for this area: top-scoring crag on the selected date
+    let areaBest=null;
+    for(const c of crags){ const rb=scoreCrag(c,s);
+      if(!areaBest||rb.score>areaBest.r.score) areaBest={c,r:rb}; }
+    if(areaBest){
+      const bb=areaBest.r.bucket;
+      const bel=document.createElement("div"); bel.className="areabest";
+      bel.innerHTML=`<span class="accent" style="background:${bb.c}"></span>
+        <span class="eye">Best bet · ${whenLabel}</span>
+        <span class="pick">${areaBest.c.name}</span>
+        <span class="sub" style="color:${bb.c}">${bb.w} · ${areaBest.r.score}</span>`;
+      wrap.appendChild(bel);
+    }
 
     const selKey=dateKey(SELECTED_DATE);
     for(const c of crags){
@@ -775,7 +775,6 @@ function render(all){
 let LAST=null;
 function skeleton(){
   content.innerHTML = AREAS.map(()=>`<div class="skel"></div>`).join("");
-  bestEl.innerHTML="";
 }
 async function load(){
   const btn=$("#refresh"); btn.classList.add("spin");
@@ -801,6 +800,14 @@ $("#refresh").addEventListener("click",load);
 
 /* ---------------- date bar + search wiring ---------------- */
 buildDateBar();
+// float the date bar once it's scrolled past the top of the viewport
+(function(){
+  const sentinel=$("#dateSentinel"), bar=$("#datebar");
+  if(!sentinel||!bar||!("IntersectionObserver" in window)) return;
+  new IntersectionObserver(([e])=>{
+    bar.classList.toggle("floating", !e.isIntersecting && e.boundingClientRect.top<=0);
+  },{threshold:[0]}).observe(sentinel);
+})();
 const searchInput=$("#search"), searchBox=$("#searchbox");
 function clearSearch(){
   SEARCH=""; searchInput.value=""; searchBox.classList.remove("has");
