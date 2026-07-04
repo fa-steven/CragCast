@@ -109,9 +109,24 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .meter .needle{position:absolute;top:-3px;width:3px;height:15px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);transform:translateX(-50%)}
 .meter .scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px;text-transform:uppercase}
 
+/* sun-exposure row (aspect + when it's lit) */
+.sunrow{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:9px}
+.sunrow .compass{width:28px;height:28px;flex:none}
+.sunwrap{flex:1;min-width:0}
+.suntrack{position:relative;display:flex;gap:1px;height:10px;border-radius:5px}
+.suntrack i{flex:1;display:block}
+.suntrack i:first-child{border-radius:5px 0 0 5px}
+.suntrack i:last-child{border-radius:0 5px 5px 0}
+.sunnow{position:absolute;top:-2px;width:2px;height:14px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);transform:translateX(-50%)}
+.sunaxis{display:flex;gap:1px;margin-top:3px}
+.sunaxis span{flex:1;text-align:center;font-family:var(--mono);font-size:7px;line-height:1;color:var(--ink-faint);white-space:nowrap;overflow:hidden}
+.sunmeta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-top:4px}
+
 /* forecast strip */
 .strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px}
-.day{border:1px solid var(--line);border-radius:9px;padding:7px 4px;text-align:center;background:var(--bg2)}
+.day{border:1px solid var(--line);border-radius:9px;padding:7px 4px;text-align:center;background:var(--bg2);cursor:pointer;transition:border-color .12s,background .12s}
+.day:hover{border-color:var(--line-strong);background:var(--card)}
+.day:focus-visible{outline:2px solid var(--good);outline-offset:1px}
 .day .d{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--ink-faint);text-transform:uppercase}
 .day .dot{width:100%;height:5px;border-radius:3px;margin:6px 0 5px}
 .day .hi{font-family:var(--mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
@@ -120,13 +135,19 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .day.sel .d{color:var(--prime)}
 
 /* expanded detail */
-.detail{grid-column:1/-1;border-top:1px dashed var(--line-strong);margin-top:11px;padding-top:11px;display:none}
+.detail{grid-column:1/-1;margin-top:9px;display:none}
 .crag[open] .detail{display:block}
-.crag[open] summary .chev{transform:rotate(180deg)}
 .why{font-size:13px;line-height:1.5;color:var(--ink-dim);margin:0 0 10px}
 .why b{color:var(--ink);font-weight:600}
 .note{font-size:12px;line-height:1.5;color:var(--ink-faint);font-style:italic;margin:0}
-.chev{width:13px;height:13px;color:var(--ink-faint);transition:transform .2s;justify-self:end;align-self:start;grid-column:2;grid-row:1}
+/* dropdown button for the explanation */
+.ddbtn{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:10px;
+  background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;cursor:pointer;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-dim);
+  transition:background .15s,color .15s}
+.ddbtn:hover{background:var(--raise);color:var(--ink)}
+.chev{width:12px;height:12px;transition:transform .2s;display:block}
+.crag[open] .ddbtn .chev{transform:rotate(180deg)}
 
 /* states */
 .state{border:1px dashed var(--line-strong);border-radius:14px;padding:26px 18px;text-align:center;color:var(--ink-dim);font-family:var(--mono);font-size:12.5px;letter-spacing:.03em;line-height:1.6}
@@ -427,6 +448,20 @@ const AREAS = [
     ]},
 ];
 
+/* ---- wall aspect: compass azimuth (deg, 0=N 90=E 180=S 270=W) the wall faces.
+   "mixed" = genuinely multi-aspect (columns/spires or a spread of walls).
+   Derived from area orientation, guidebook aspect notes, and per-crag research. */
+const FACES = {
+  "Lower Town Wall":180, "Upper Town Wall · Cheeks":190, "Lookout Point":95,
+  "The Chief · Grand Wall":250, "The Apron":245, "Smoke Bluffs":"mixed",
+  "Exit 38 · Far Side":110, "Exit 32 · Little Si":140, "Deception Crags":30,
+  "Sunshine Wall":200, "The Feathers":"mixed", "Middle Coulee":0,
+  "The Dihedrals":130, "Morning Glory Wall":90, "Christian Brothers · The Monument":"mixed",
+  "Hanging Gardens":215, "North Face":350, "Red Wall · Trinity":220,
+  "Main Wall":180, "Castle Wall":205, "Cool Wall":0
+};
+AREAS.forEach(a=>a.crags.forEach(c=>{ c.face = (c.name in FACES) ? FACES[c.name] : "mixed"; }));
+
 /* ---------------- units ---------------- */
 let UNIT = "us"; // us=°F/mph/in, si=°C/kmh/mm
 const cvT = f => UNIT==="us" ? f : (f-32)*5/9;
@@ -603,6 +638,15 @@ function sampleForDate(d){
            precipNow:match.precipNow, seepLoad:match.seepLoad };
 }
 
+// set the active date (from a pill, or a day tapped inside a crag) and refresh
+function selectDate(dt){
+  const d=new Date(dt); d.setHours(0,0,0,0);
+  if(dateKey(d)===dateKey(SELECTED_DATE)) return;
+  SELECTED_DATE=d;
+  buildDateBar();          // updates which pill reads as selected
+  if(LAST) render(LAST);
+}
+
 // build the today→+6 date pill row
 function buildDateBar(){
   const bar=$("#datebar"); if(!bar) return;
@@ -620,9 +664,7 @@ function buildDateBar(){
   bar.querySelectorAll(".datepill").forEach(p=>p.addEventListener("click",()=>{
     const today0=new Date(); today0.setHours(0,0,0,0);
     today0.setDate(today0.getDate()+ (+p.dataset.i));
-    SELECTED_DATE=today0;
-    bar.querySelectorAll(".datepill").forEach(x=>x.setAttribute("aria-pressed", x===p));
-    if(LAST) render(LAST);
+    selectDate(today0);
   }));
 }
 
@@ -663,6 +705,102 @@ function cragMatches(area,c){
   const terms=q.split(/\s+/).filter(Boolean);
   return terms.every(term =>
     hay.includes(term) || tokens.some(tok=>tokenMatch(term,tok)));
+}
+
+/* ---------------- solar geometry (sun-exposure visual) ---------------- */
+// low-precision solar position: returns {elev, az} degrees, az 0=N 90=E 180=S 270=W
+function sunPos(lat, lon, date){
+  const rad=Math.PI/180;
+  const n = date.getTime()/86400000 + 2440587.5 - 2451545.0;   // days from J2000
+  const L = (280.460 + 0.9856474*n) % 360;
+  const g = (357.528 + 0.9856003*n) % 360;
+  const lambda = (L + 1.915*Math.sin(g*rad) + 0.020*Math.sin(2*g*rad)) % 360;
+  const eps = 23.439 - 0.0000004*n;
+  const alpha = Math.atan2(Math.cos(eps*rad)*Math.sin(lambda*rad), Math.cos(lambda*rad))/rad;
+  const delta = Math.asin(Math.sin(eps*rad)*Math.sin(lambda*rad))/rad;
+  const GMST = (280.46061837 + 360.98564736629*n) % 360;
+  let H = (GMST + lon - alpha) % 360; H = ((H+540)%360)-180;   // hour angle, -180..180
+  const latR=lat*rad, dR=delta*rad, HR=H*rad;
+  const sinElev = Math.sin(latR)*Math.sin(dR) + Math.cos(latR)*Math.cos(dR)*Math.cos(HR);
+  const elev = Math.asin(Math.max(-1,Math.min(1,sinElev)))/rad;
+  const cosAz = (Math.sin(dR) - Math.sin(latR)*sinElev) / (Math.cos(latR)*Math.cos(elev*rad));
+  let az = Math.acos(Math.max(-1,Math.min(1,cosAz)))/rad;      // 0..180 from N
+  if(Math.sin(HR) > 0) az = 360 - az;                          // afternoon -> western half
+  return {elev, az};
+}
+// hours to add to local wall-clock time to get UTC (DST-aware)
+function tzOffsetHours(tz, date){
+  const d = date || new Date();
+  const utc = new Date(d.toLocaleString('en-US',{timeZone:'UTC'}));
+  const loc = new Date(d.toLocaleString('en-US',{timeZone:tz}));
+  return Math.round((utc-loc)/3600000);
+}
+function nowLocalHour(tz){
+  const loc = new Date(new Date().toLocaleString('en-US',{timeZone:tz}));
+  return loc.getHours() + loc.getMinutes()/60;
+}
+const compass8 = az => ["N","NE","E","SE","S","SW","W","NW"][Math.round(az/45)%8];
+function fmtHour(h){ const H=Math.floor(h)%24, ap=H<12?"a":"p"; let hh=H%12; if(hh===0)hh=12; return hh+ap; }
+
+const SUN_H0=6, SUN_H1=20, SUN_STEP=1;   // local-hour axis for the sun bar (one rectangle per hour)
+// sun intensity on this wall for each half-hour of the selected date
+function sunTimeline(area, crag){
+  const off = tzOffsetHours(area.tz, SELECTED_DATE);
+  const y=SELECTED_DATE.getFullYear(), m=SELECTED_DATE.getMonth(), d=SELECTED_DATE.getDate();
+  const cells=[];
+  for(let h=SUN_H0; h<=SUN_H1; h+=SUN_STEP){
+    const dt = new Date(Date.UTC(y,m,d,0,0,0) + (h+off)*3600e3);
+    const {elev,az} = sunPos(area.lat, area.lon, dt);
+    let inten=0;
+    if(elev>2){
+      if(crag.face==="mixed") inten = Math.sin(elev*Math.PI/180);          // some side always lit
+      else { const diff=Math.abs(((az-crag.face+540)%360)-180);            // 0..180 off the normal
+             if(diff<85) inten = Math.cos(diff*Math.PI/180)*Math.sin(elev*Math.PI/180); }
+    }
+    cells.push({h, inten, up:elev>0});
+  }
+  return cells;
+}
+function compassSVG(face){
+  if(face==="mixed"){
+    const rays=[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;
+      return `<line x1="${(14+6*Math.sin(r)).toFixed(1)}" y1="${(14-6*Math.cos(r)).toFixed(1)}" x2="${(14+10*Math.sin(r)).toFixed(1)}" y2="${(14-10*Math.cos(r)).toFixed(1)}" stroke="#ffbe5a" stroke-width="1.3"/>`;}).join("");
+    return `<svg class="compass" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="var(--line-strong)"/><circle cx="14" cy="14" r="3" fill="#ffbe5a"/>${rays}</svg>`;
+  }
+  const r=face*Math.PI/180, ax=14+9*Math.sin(r), ay=14-9*Math.cos(r);
+  return `<svg class="compass" viewBox="0 0 28 28" aria-hidden="true">
+    <circle cx="14" cy="14" r="12" fill="none" stroke="var(--line-strong)"/>
+    <text x="14" y="6.4" text-anchor="middle" font-size="6" fill="var(--ink-faint)" font-family="IBM Plex Mono,monospace">N</text>
+    <line x1="14" y1="14" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="#ffbe5a" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="2" fill="#ffbe5a"/></svg>`;
+}
+// the whole sun-exposure element for one crag
+function sunHTML(area, crag){
+  const cells = sunTimeline(area, crag);
+  // absolute intensity (0=none .. ~0.95=high overhead sun on the wall) — honest across aspects
+  const seg = cells.map(c=>{
+    const v = Math.min(1, c.inten);
+    const bg = v>0.10 ? `rgba(255,190,90,${(0.25+0.7*v).toFixed(2)})` : (c.up?"var(--line-strong)":"var(--bg2)");
+    return `<i style="background:${bg}"></i>`;
+  }).join("");
+  const axis = cells.map(c=>`<span>${fmtHour(c.h)}</span>`).join("");
+  let nowM="";
+  if(isSelToday()){
+    const nh=nowLocalHour(area.tz);
+    if(nh>=SUN_H0 && nh<=SUN_H1) nowM=`<span class="sunnow" style="left:${((nh-SUN_H0)/(SUN_H1-SUN_H0)*100).toFixed(1)}%"></span>`;
+  }
+  const lit = cells.filter(c=> c.inten > 0.15);   // meaningful direct sun
+  const litTxt = lit.length ? `sun ${fmtHour(lit[0].h)}–${fmtHour(lit[lit.length-1].h)}`
+                            : (crag.face==="mixed" ? "low sun" : "mostly shade");
+  const label = crag.face==="mixed" ? "Varied aspect" : compass8(crag.face)+"-facing";
+  return `<div class="sunrow">
+    ${compassSVG(crag.face)}
+    <div class="sunwrap">
+      <div class="suntrack">${seg}${nowM}</div>
+      <div class="sunaxis">${axis}</div>
+      <div class="sunmeta"><span>${label}</span><span>${litTxt}</span></div>
+    </div>
+  </div>`;
 }
 
 function render(all){
@@ -722,7 +860,7 @@ function render(all){
       const strip=days.map(dy=>{
         const dr=scoreCrag(c,{temp:dy.temp,dew:dy.dew,wind:dy.wind,cloud:dy.cloud,precipNow:dy.precipNow,seepLoad:dy.seepLoad});
         const sel=dateKey(dy.date)===selKey;
-        return `<div class="day${sel?" sel":""}"><div class="d">${DOW[dy.date.getDay()]}</div>
+        return `<div class="day${sel?" sel":""}" data-ts="${dy.date.getTime()}" role="button" tabindex="0" title="Show this day"><div class="d">${DOW[dy.date.getDay()]}</div>
           <div class="dot" style="background:${dr.bucket.c}"></div>
           <div class="hi">${r0(cvT(dy.hi))}°</div><div class="sc">${dr.score}</div></div>`;
       }).join("");
@@ -738,8 +876,6 @@ function render(all){
             <span class="word" style="color:${b.c}">${b.w}</span>
             <span class="score" style="color:${b.c}">${r.score}<small>/100</small></span>
           </div>
-          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
-
           <div class="readouts">
             <div class="ro"><div class="k">Temp</div><div class="v">${r0(cvT(s.temp))}<small>${uT()}</small></div></div>
             <div class="ro"><div class="k">Dew pt</div><div class="v">${r0(cvT(s.dew))}<small>${uT()}</small></div></div>
@@ -752,8 +888,14 @@ function render(all){
             <div class="scale"><span>Wet</span><span>Poor</span><span>Marginal</span><span>Good</span><span>Prime</span></div>
           </div>
 
+          ${sunHTML(area,c)}
+
           <div class="strip">${strip}</div>
 
+          <button type="button" class="ddbtn" aria-expanded="false" aria-label="Toggle score explanation">
+            <span>Why ${r.score}</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
           <div class="detail">
             <p class="why"><b>Why ${r.score}:</b> ${rationale(c,s,r)}</p>
             <p class="note">${c.note}</p>
@@ -819,6 +961,31 @@ searchInput.addEventListener("input",()=>{
   if(LAST) render(LAST);
 });
 $("#searchClear").addEventListener("click",clearSearch);
+
+/* clicks inside crag cards: a strip day changes the date; the dropdown button
+   toggles the explanation. Native <details> toggling is suppressed so the rest
+   of the card doesn't expand on tap. (Delegated once; survives re-renders.) */
+content.addEventListener("click", e=>{
+  const summary = e.target.closest("summary");
+  if(!summary || !summary.parentElement.classList.contains("crag")) return;
+  e.preventDefault();                           // dropdown button is the only expander
+  const dd  = e.target.closest(".ddbtn");
+  const day = e.target.closest(".day");
+  if(dd){
+    const det = summary.parentElement;
+    det.open = !det.open;
+    dd.setAttribute("aria-expanded", det.open ? "true" : "false");
+  } else if(day && day.dataset.ts){
+    selectDate(new Date(+day.dataset.ts));
+  }
+});
+// keyboard activation for the strip days (role=button); the real dropdown
+// <button> fires its own click on Enter/Space and is handled above.
+content.addEventListener("keydown", e=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  const day = e.target.closest && e.target.closest(".day");
+  if(day && day.dataset && day.dataset.ts){ e.preventDefault(); selectDate(new Date(+day.dataset.ts)); }
+});
 
 /* ---------------- 30-day dry-out archive ---------------- */
 const ARCHIVE = {};                       // cache by area id ("loading" | data | {error})
