@@ -88,6 +88,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .crag summary::-webkit-details-marker{display:none}
 .cname{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cname .n{font-size:15.5px;font-weight:600;letter-spacing:.01em}
+.cname .walls{font-family:var(--mono);font-size:9.5px;letter-spacing:.02em;line-height:1.45;color:var(--ink-faint)}
 .cname .tags{display:flex;flex-wrap:wrap;gap:5px}
 .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);
   border:1px solid var(--line-strong);border-radius:5px;padding:2px 5px;white-space:nowrap}
@@ -116,6 +117,8 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .day .dot{width:100%;height:5px;border-radius:3px;margin:6px 0 5px}
 .day .hi{font-family:var(--mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .day .sc{font-family:var(--mono);font-size:9px;color:var(--ink-dim)}
+.day.sel{border-color:var(--prime);background:var(--card2)}
+.day.sel .d{color:var(--prime)}
 
 /* expanded detail */
 .detail{grid-column:1/-1;border-top:1px dashed var(--line-strong);margin-top:11px;padding-top:11px;display:none}
@@ -146,6 +149,25 @@ footer a{color:var(--ink-dim)}
   .strip{grid-template-columns:repeat(6,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- controls: date filter + search ---- */
+.controls{display:flex;flex-direction:column;gap:9px;margin:0 2px 15px}
+.datebar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none}
+.datebar::-webkit-scrollbar{display:none}
+.datepill{flex:none;background:var(--card);border:1px solid var(--line-strong);border-radius:11px;padding:6px 11px;cursor:pointer;
+  font-family:var(--mono);text-align:center;color:var(--ink-dim);min-width:54px;line-height:1;transition:border-color .15s,background .15s}
+.datepill:hover{color:var(--ink)}
+.datepill[aria-pressed="true"]{background:var(--raise);color:var(--ink);border-color:var(--prime)}
+.datepill .dw{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.datepill[aria-pressed="true"] .dw{color:var(--prime)}
+.datepill .dd{font-size:13px;font-weight:600;margin-top:3px}
+.searchbox{display:flex;align-items:center;gap:9px;border:1px solid var(--line-strong);border-radius:11px;background:var(--card);padding:8px 12px}
+.searchbox svg{width:14px;height:14px;color:var(--ink-faint);flex:none}
+.searchbox input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--ink);font-family:var(--disp);font-size:14px;letter-spacing:.01em}
+.searchbox input::placeholder{color:var(--ink-faint)}
+.searchbox button{background:transparent;border:0;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;display:none}
+.searchbox button:hover{color:var(--ink)}
+.searchbox.has button{display:block}
 
 /* ---- 30-day archive overlay ---- */
 .btnrow{display:flex;gap:8px}
@@ -212,6 +234,15 @@ footer a{color:var(--ink-dim)}
     </div>
   </header>
 
+  <div class="controls">
+    <div class="datebar" id="datebar" role="group" aria-label="Forecast date"></div>
+    <div class="searchbox" id="searchbox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="search" type="search" autocomplete="off" placeholder="Search crags, areas, tags…" aria-label="Search crags" />
+      <button id="searchClear" type="button" aria-label="Clear search">✕</button>
+    </div>
+  </div>
+
   <div id="bestbet"></div>
   <div id="content"></div>
 
@@ -259,12 +290,18 @@ const AREAS = [
     crags:[
       { name:"Lower Town Wall", steep:.45, sun:.8, drain:.28, lagH:2,
         tags:["Granite","S face","Low-angle→vert"],
+        walls:["Great Northern Slab","Godzilla","City Park","Davis-Holland","Slow Children","The Country"],
+        aka:["LTW","GNS"],
         note:"Valley-floor humidity keeps it greasy at dawn; morning sun burns off condensation. Great Northern Slab seeps longest — the steep central lines come in first." },
       { name:"Upper Town Wall · Cheeks", steep:.92, sun:.75, drain:.35, lagH:5,
         tags:["Granite","Steep","Rain refuge"],
+        walls:["The Cheeks","Town Crier","Green Dragon","Wildest Dreams","Golden Road","Heaven's Gate"],
+        aka:["UTW"],
         note:"Overhung enough to stay dry through actual rain and come back first. Higher and windier, so it lags the LTW after a system but shrugs off moisture." },
       { name:"Lookout Point", steep:.2, sun:.4, drain:.6, lagH:2,
         tags:["Granite","Slab","Fast-draining"],
+        walls:["Private Idaho","Lookout Point Proper","Duck Wall","Mosquito Wall","The Diamond","Rattletale Wall"],
+        aka:["LP"],
         note:"Slabs sheet water off and dry fast, but shaded — quick to dry, slow to warm. Needs sun on it before the friction shows up." },
     ]},
   { id:"squamish", name:"Squamish", lat:49.6870, lon:-123.1400, rock:"Granite",
@@ -272,12 +309,18 @@ const AREAS = [
     crags:[
       { name:"The Chief · Grand Wall", steep:.7, sun:.7, drain:.35, lagH:3,
         tags:["Granite","W/SW","Steep"],
+        walls:["Grand Wall","Split Pillar","The Sword","Roman Chimneys","Bellygood","Merci Me Wall"],
+        aka:["The Chief"],
         note:"Coastal granite; steeper Grand Wall terrain sheds water better than the Apron. Afternoon sun on a W/SW aspect helps it come around late in the day." },
       { name:"The Apron", steep:.18, sun:.65, drain:.4, lagH:2,
         tags:["Granite","Slab","Friction-critical"],
+        walls:["Diedre","Banana Peel","Snake","St. Vitus Dance","Calculus Crack","Rock On"],
+        aka:["Apron of the Chief"],
         note:"Low-angle friction slab — the most dew-point-sensitive terrain here. Damp air alone makes it unclimbable even when dry; wants cold, crisp, low-humidity air." },
       { name:"Smoke Bluffs", steep:.5, sun:.6, drain:.45, lagH:1,
         tags:["Granite","Mixed","Quick access"],
+        walls:["Neat and Cool","Pixie Corner","Octopus' Garden","Penny Lane","Burgers and Fries","Split Beaver"],
+        aka:["Smoke Bluff Park"],
         note:"Short walls, fast access, good spread of aspects — the pragmatic pick when the big walls are marginal or busy." },
     ]},
   { id:"exits", name:"The Exits", lat:47.4419, lon:-121.6556, rock:"Volcanic",
@@ -285,12 +328,18 @@ const AREAS = [
     crags:[
       { name:"Exit 38 · Far Side", steep:.9, sun:.5, drain:.4, lagH:1,
         tags:["Steep","Rain refuge","Sport"],
+        walls:["Neverland","Overhaul","Interstate Park","Gritscone","Gun Show"],
+        aka:["Far Side","Dirty Harry's"],
         note:"The classic drizzle-day bailout — overhung enough to stay dry when everything west is dripping. Treed and low, but the steep stone keeps the holds usable." },
       { name:"Exit 32 · Little Si", steep:.72, sun:.45, drain:.4, lagH:1,
         tags:["Steep","Quick access","Sport"],
+        walls:["World Wall I","World Wall II"],
+        aka:["Little Si","Exit 32"],
         note:"Steep World-Wall terrain stays dry in light rain with a short approach. Shaded and mossy, so it warms slowly and stays humid in still air." },
       { name:"Deception Crags", steep:.4, sun:.4, drain:.35, lagH:2,
         tags:["Moderate","Treed","Slabby"],
+        walls:["Nevermind Wall","Deception Wall","Hall Creek Rock","We Did Rock","Write-off Rock","Kiosk Rock"],
+        aka:["Exit 38","Substation"],
         note:"Lower-angle and heavily treed — holds moisture and dries slowly. A prime-day-only zone, not a marginal-day play." },
     ]},
   { id:"vantage", name:"Vantage", lat:46.9536, lon:-119.9847, rock:"Basalt",
@@ -298,12 +347,18 @@ const AREAS = [
     crags:[
       { name:"Sunshine Wall", steep:.6, sun:.95, drain:.95, lagH:0,
         tags:["Basalt","S/SW","Sun-baked"],
+        walls:["King Pins","Jigsaw Wall","Coyote Wall","Twin Cracks","Air Guitar"],
+        aka:["Sunshine"],
         note:"Rain-shadow basalt that drains in hours — the go-to when the west side is soaked. Full sun means it bakes; in summer the friction is gone by midday and you chase shade." },
       { name:"The Feathers", steep:.55, sun:.85, drain:.95, lagH:0,
         tags:["Basalt","Exposed","Windy"],
+        walls:["The Feathers","M&M Wall","Riverview Wall"],
+        aka:["Feathers"],
         note:"Freestanding columns that dry almost instantly but catch the full coulee wind — a light breeze is perfect here, a gale is miserable and cold." },
       { name:"Middle Coulee", steep:.5, sun:.45, drain:.9, lagH:0,
         tags:["Basalt","Shadier","Hot-day pick"],
+        walls:["Middle East Wall","Postal Wall","The Dungeon","The Sanctuary"],
+        aka:["Middle East","Echo Basin"],
         note:"The shade option when Sunshine Wall is an oven. Same fast-draining basalt, cooler aspect — the summer-afternoon move." },
     ]},
 ];
@@ -467,18 +522,99 @@ function nowSample(d){
            precipNow:d.now.precipNow, seepLoad:seepLoadAt(d.hourly, d.now.t.getTime()) };
 }
 
+/* ---------------- date filter + search state ---------------- */
+const dateKey = t => t.getFullYear()+"-"+(t.getMonth()+1)+"-"+t.getDate();
+let SELECTED_DATE = new Date();            // the day scores represent
+let SEARCH = "";
+const isSelToday = ()=> dateKey(SELECTED_DATE)===dateKey(new Date());
+
+// weather sample for the selected date — live conditions if today, else that
+// day's climbing-window aggregate. Falls back to now if the date isn't in range.
+function sampleForDate(d){
+  if(isSelToday()) return nowSample(d);
+  const key = dateKey(SELECTED_DATE);
+  const match = dayWindows(d.hourly).find(x=>dateKey(x.date)===key);
+  if(!match) return nowSample(d);
+  return { temp:match.temp, dew:match.dew, wind:match.wind, cloud:match.cloud,
+           precipNow:match.precipNow, seepLoad:match.seepLoad };
+}
+
+// build the today→+6 date pill row
+function buildDateBar(){
+  const bar=$("#datebar"); if(!bar) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const selKey=dateKey(SELECTED_DATE);
+  let html="";
+  for(let i=0;i<7;i++){
+    const dt=new Date(today.getTime()); dt.setDate(today.getDate()+i);
+    const k=dateKey(dt), on=k===selKey;
+    const dw=i===0?"Today":DOW[dt.getDay()];
+    html+=`<button class="datepill" data-date="${k}" data-i="${i}" aria-pressed="${on}">
+      <div class="dw">${dw}</div><div class="dd">${dt.getMonth()+1}/${dt.getDate()}</div></button>`;
+  }
+  bar.innerHTML=html;
+  bar.querySelectorAll(".datepill").forEach(p=>p.addEventListener("click",()=>{
+    const today0=new Date(); today0.setHours(0,0,0,0);
+    today0.setDate(today0.getDate()+ (+p.dataset.i));
+    SELECTED_DATE=today0;
+    bar.querySelectorAll(".datepill").forEach(x=>x.setAttribute("aria-pressed", x===p));
+    if(LAST) render(LAST);
+  }));
+}
+
+// --- fuzzy search (misspelling-tolerant) ---
+// Optimal String Alignment distance (Levenshtein + adjacent transposition)
+function editDist(a,b){
+  const m=a.length,n=b.length;
+  if(!m) return n; if(!n) return m;
+  const d=[]; for(let i=0;i<=m;i++) d[i]=[i];
+  for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+    const cost=a[i-1]===b[j-1]?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+cost);
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1]) d[i][j]=Math.min(d[i][j], d[i-2][j-2]+1);
+  }
+  return d[m][n];
+}
+const fuzzyTol = len => len<=3 ? 0 : len<=5 ? 1 : 2;   // edits allowed by term length
+function tokenMatch(term,tok){
+  if(tok.includes(term)||term.includes(tok)) return true;
+  const tol=fuzzyTol(term.length);
+  return tol>0 && editDist(term,tok)<=tol;
+}
+// cache a searchable haystack + word tokens on each crag
+function searchIndex(area,c){
+  if(c._idx) return c._idx;
+  const parts=[c.name, area.name, area.rock||"", ...(c.tags||[]), ...(c.walls||[]), ...(c.aka||[])];
+  const hay=parts.join(" · ").toLowerCase();
+  const tokens=[...new Set(hay.split(/[^a-z0-9]+/).filter(t=>t.length>1))];
+  return c._idx={hay,tokens};
+}
+// crag matches the active search query (fuzzy, per-term)
+function cragMatches(area,c){
+  const q=SEARCH.trim().toLowerCase();
+  if(!q) return true;
+  const {hay,tokens}=searchIndex(area,c);
+  if(hay.includes(q)) return true;                       // fast exact/substring path
+  const terms=q.split(/\s+/).filter(Boolean);
+  return terms.every(term =>
+    hay.includes(term) || tokens.some(tok=>tokenMatch(term,tok)));
+}
+
 function render(all){
-  // best bet across every crag, right now
+  const whenLabel = isSelToday() ? "right now" : SELECTED_DATE.toLocaleDateString([], {weekday:"short", month:"short", day:"numeric"});
+  // best bet across every (matching) crag for the selected date
   let best=null;
   for(const d of all){ if(d.error) continue;
-    const s=nowSample(d);
-    for(const c of d.area.crags){ const r=scoreCrag(c,s);
+    const s=sampleForDate(d);
+    for(const c of d.area.crags){ if(!cragMatches(d.area,c)) continue;
+      const r=scoreCrag(c,s);
       if(!best||r.score>best.r.score) best={area:d.area,crag:c,r,s}; }
   }
   if(best){
     const b=best.r.bucket;
     bestEl.innerHTML=`<div class="bestbet"><span class="accent" style="background:${b.c}"></span>
-      <div class="eye">Best bet right now</div>
+      <div class="eye">Best bet · ${whenLabel}</div>
       <div class="line">
         <span class="pick"><b style="color:${b.c}">${best.area.name}</b> · ${best.crag.name}</span>
         <span class="sub" style="color:${b.c}">${b.w} · ${best.r.score}</span>
@@ -488,18 +624,25 @@ function render(all){
   } else bestEl.innerHTML="";
 
   content.innerHTML="";
+  const searching = SEARCH.trim().length>0;
+  let shown=0;
   for(const d of all){
     const area=d.area;
-    const wrap=document.createElement("section"); wrap.className="area";
 
     if(d.error){
+      if(searching) continue;
+      const wrap=document.createElement("section"); wrap.className="area";
       wrap.innerHTML=`<div class="area-head"><h2>${area.name}</h2><span class="meta">${area.region}</span></div>
         <div class="state"><b>Couldn't reach the forecast for ${area.name}</b>${d.error}<br>Check your connection, then try again.
         <br><button onclick="load()">Retry</button></div>`;
-      content.appendChild(wrap); continue;
+      content.appendChild(wrap); shown++; continue;
     }
 
-    const s=nowSample(d);
+    const crags=area.crags.filter(c=>cragMatches(area,c));
+    if(!crags.length) continue;
+
+    const wrap=document.createElement("section"); wrap.className="area";
+    const s=sampleForDate(d);
     const days=dayWindows(d.hourly).filter(x=>x.date.getTime()>=new Date().setHours(0,0,0,0)).slice(0,6);
     // 5-day recent rain sparkline (past days)
     const past=dayWindows(d.hourly).filter(x=>x.date.getTime()<new Date().setHours(0,0,0,0)).slice(-5);
@@ -512,13 +655,15 @@ function render(all){
       <span class="rain" title="Rain over the past 5 days">${UNIT==="us"?rain5+'"':r1(rain5*25.4)+'mm'} / 5d <span class="spark">${spark}</span></span>`;
     wrap.appendChild(head);
 
-    for(const c of area.crags){
+    const selKey=dateKey(SELECTED_DATE);
+    for(const c of crags){
       const r=scoreCrag(c,s), b=r.bucket;
       const det=document.createElement("details"); det.className="crag";
       const spreadDisp=r0(cvT(s.temp)-cvT(s.dew));
       const strip=days.map(dy=>{
         const dr=scoreCrag(c,{temp:dy.temp,dew:dy.dew,wind:dy.wind,cloud:dy.cloud,precipNow:dy.precipNow,seepLoad:dy.seepLoad});
-        return `<div class="day"><div class="d">${DOW[dy.date.getDay()]}</div>
+        const sel=dateKey(dy.date)===selKey;
+        return `<div class="day${sel?" sel":""}"><div class="d">${DOW[dy.date.getDay()]}</div>
           <div class="dot" style="background:${dr.bucket.c}"></div>
           <div class="hi">${r0(cvT(dy.hi))}°</div><div class="sc">${dr.score}</div></div>`;
       }).join("");
@@ -527,6 +672,7 @@ function render(all){
         <summary>
           <div class="cname">
             <span class="n">${c.name}</span>
+            ${c.walls&&c.walls.length?`<span class="walls">${c.walls.join(" · ")}</span>`:""}
             <span class="tags">${c.tags.map(t=>`<span class="chip">${t}</span>`).join("")}</span>
           </div>
           <div class="badge">
@@ -557,7 +703,10 @@ function render(all){
       // prevent <summary> grid children from toggling weirdly: keep native toggle on summary
       wrap.appendChild(det);
     }
-    content.appendChild(wrap);
+    content.appendChild(wrap); shown++;
+  }
+  if(!shown){
+    content.innerHTML=`<div class="state"><b>No crags match “${SEARCH.trim()}”</b>Try a crag, area, rock type, or tag — e.g. “basalt”, “steep”, “Index”.<br><button onclick="clearSearch()">Clear search</button></div>`;
   }
   const t=new Date();
   $("#upd").textContent = t.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
@@ -590,6 +739,20 @@ document.querySelectorAll(".units button").forEach(b=>{
   });
 });
 $("#refresh").addEventListener("click",load);
+
+/* ---------------- date bar + search wiring ---------------- */
+buildDateBar();
+const searchInput=$("#search"), searchBox=$("#searchbox");
+function clearSearch(){
+  SEARCH=""; searchInput.value=""; searchBox.classList.remove("has");
+  if(LAST) render(LAST); searchInput.focus();
+}
+searchInput.addEventListener("input",()=>{
+  SEARCH=searchInput.value;
+  searchBox.classList.toggle("has", SEARCH.length>0);
+  if(LAST) render(LAST);
+});
+$("#searchClear").addEventListener("click",clearSearch);
 
 /* ---------------- 30-day dry-out archive ---------------- */
 const ARCHIVE = {};                       // cache by area id ("loading" | data | {error})
