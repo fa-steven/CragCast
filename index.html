@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>CragCast — PNW Conditions</title>
+<meta name="description" content="Live and recent-historical climbing conditions for Index, Squamish, The Exits, and Vantage." />
+
+<!-- PWA / cross-platform install -->
+<meta name="theme-color" content="#10151c" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="CragCast" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+:root{
+  --bg:#10151c; --bg2:#0b0f14;
+  --card:#161d26; --card2:#1b242f; --raise:#212c39;
+  --ink:#e9eef4; --ink-dim:#9aa7b6; --ink-faint:#657283;
+  --line:rgba(150,170,195,.12); --line-strong:rgba(150,170,195,.22);
+  /* friction signal scale: cold = good */
+  --prime:#3ee0c4; --good:#7fd3ff; --marg:#f2b441; --poor:#e08a5a; --wet:#c85f6b;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px -12px rgba(0,0,0,.6);
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --disp:'Space Grotesk',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #17222e 0%, rgba(23,34,46,0) 60%),
+    radial-gradient(900px 500px at -10% 10%, #131b26 0%, rgba(19,27,38,0) 55%),
+    var(--bg);
+  color:var(--ink); font-family:var(--disp);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  min-height:100dvh;
+  padding:max(14px,env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:760px;margin:0 auto}
+
+/* ---- header ---- */
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 14px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.mark{display:flex;align-items:center;gap:9px}
+.mark svg{width:26px;height:26px;flex:none}
+.mark h1{font-size:22px;letter-spacing:.14em;font-weight:700;margin:0;line-height:1}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-left:35px;margin-top:-1px}
+.hctl{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.units{display:inline-flex;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden;font-family:var(--mono);font-size:11px}
+.units button{background:transparent;color:var(--ink-dim);border:0;padding:5px 10px;cursor:pointer;letter-spacing:.05em}
+.units button[aria-pressed="true"]{background:var(--raise);color:var(--ink)}
+.refresh{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line-strong);color:var(--ink-dim);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:5px 9px;border-radius:8px;cursor:pointer}
+.refresh:hover{color:var(--ink);border-color:var(--line-strong)}
+.refresh svg{width:12px;height:12px}
+.refresh.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- best bet banner ---- */
+.bestbet{position:relative;border:1px solid var(--line-strong);border-radius:16px;padding:14px 16px;margin-bottom:16px;
+  background:linear-gradient(180deg,var(--card2),var(--card));box-shadow:var(--shadow);overflow:hidden}
+.bestbet .eye{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint)}
+.bestbet .line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px}
+.bestbet .pick{font-size:19px;font-weight:600;letter-spacing:.01em}
+.bestbet .pick b{color:var(--prime)}
+.bestbet .sub{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim)}
+.bestbet .accent{position:absolute;inset:0 auto 0 0;width:4px;background:var(--prime)}
+
+/* ---- area block ---- */
+.area{margin:0 0 20px}
+.area-head{display:flex;align-items:center;gap:10px;margin:0 2px 9px}
+.area-head h2{font-size:15px;letter-spacing:.03em;font-weight:600;margin:0}
+.area-head .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.04em}
+.area-head .rain{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
+.spark{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.spark i{width:4px;background:var(--good);border-radius:1px;opacity:.85;display:block}
+
+/* ---- crag card ---- */
+.crag{border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:var(--shadow);margin-bottom:9px;overflow:hidden}
+.crag summary{list-style:none;cursor:pointer;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:10px 12px;align-items:center}
+.crag summary::-webkit-details-marker{display:none}
+.cname{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cname .n{font-size:15.5px;font-weight:600;letter-spacing:.01em}
+.cname .tags{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);
+  border:1px solid var(--line-strong);border-radius:5px;padding:2px 5px;white-space:nowrap}
+.badge{justify-self:end;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.badge .word{font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.badge .score{font-size:26px;font-weight:700;line-height:.9;font-variant-numeric:tabular-nums}
+.badge .score small{font-size:11px;color:var(--ink-faint);font-weight:500}
+
+.readouts{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:2px}
+.ro{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:7px 8px;text-align:center}
+.ro .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.ro .v{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.ro .v small{font-size:9px;color:var(--ink-faint);font-weight:400}
+
+/* friction meter */
+.meter{grid-column:1/-1;margin-top:3px}
+.meter .track{position:relative;height:9px;border-radius:6px;overflow:hidden;
+  background:linear-gradient(90deg,var(--wet) 0%,var(--poor) 26%,var(--marg) 48%,var(--good) 72%,var(--prime) 100%);opacity:.9}
+.meter .needle{position:absolute;top:-3px;width:3px;height:15px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);transform:translateX(-50%)}
+.meter .scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px;text-transform:uppercase}
+
+/* forecast strip */
+.strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px}
+.day{border:1px solid var(--line);border-radius:9px;padding:7px 4px;text-align:center;background:var(--bg2)}
+.day .d{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--ink-faint);text-transform:uppercase}
+.day .dot{width:100%;height:5px;border-radius:3px;margin:6px 0 5px}
+.day .hi{font-family:var(--mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.day .sc{font-family:var(--mono);font-size:9px;color:var(--ink-dim)}
+
+/* expanded detail */
+.detail{grid-column:1/-1;border-top:1px dashed var(--line-strong);margin-top:11px;padding-top:11px;display:none}
+.crag[open] .detail{display:block}
+.crag[open] summary .chev{transform:rotate(180deg)}
+.why{font-size:13px;line-height:1.5;color:var(--ink-dim);margin:0 0 10px}
+.why b{color:var(--ink);font-weight:600}
+.note{font-size:12px;line-height:1.5;color:var(--ink-faint);font-style:italic;margin:0}
+.chev{width:13px;height:13px;color:var(--ink-faint);transition:transform .2s;justify-self:end;align-self:start;grid-column:2;grid-row:1}
+
+/* states */
+.state{border:1px dashed var(--line-strong);border-radius:14px;padding:26px 18px;text-align:center;color:var(--ink-dim);font-family:var(--mono);font-size:12.5px;letter-spacing:.03em;line-height:1.6}
+.state b{color:var(--ink);font-weight:600;display:block;margin-bottom:4px;font-size:13.5px;letter-spacing:.05em}
+.state button{margin-top:12px;background:var(--raise);border:1px solid var(--line-strong);color:var(--ink);font-family:var(--mono);
+  font-size:12px;padding:7px 14px;border-radius:8px;cursor:pointer;letter-spacing:.05em}
+.skel{height:150px;border-radius:14px;background:linear-gradient(100deg,var(--card) 30%,var(--card2) 50%,var(--card) 70%);
+  background-size:200% 100%;animation:sh 1.3s linear infinite;margin-bottom:9px;border:1px solid var(--line)}
+@keyframes sh{to{background-position:-200% 0}}
+
+footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--ink-faint);letter-spacing:.03em}
+footer a{color:var(--ink-dim)}
+.updated{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em}
+
+@media(max-width:440px){
+  .readouts{grid-template-columns:repeat(4,1fr)}
+  .badge .score{font-size:23px}
+  .strip{grid-template-columns:repeat(6,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- 30-day archive overlay ---- */
+.btnrow{display:flex;gap:8px}
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(6,9,13,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(14px,env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom))}
+.overlay[hidden]{display:none}
+.sheet{max-width:760px;margin:0 auto;background:linear-gradient(180deg,var(--card2),var(--card));
+  border:1px solid var(--line-strong);border-radius:18px;box-shadow:0 30px 80px -20px rgba(0,0,0,.7);overflow:hidden}
+.sheet-head{position:sticky;top:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+  padding:15px 16px 13px;background:linear-gradient(180deg,var(--card2),rgba(27,36,47,.94));border-bottom:1px solid var(--line);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.sheet-head .tag{margin:0}
+.sheet-head h2{margin:3px 0 0;font-size:18px;letter-spacing:.02em}
+.sheet-actions{display:flex;gap:8px;flex:none}
+.sheet-foot{padding:13px 16px 16px;font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--ink-faint);letter-spacing:.02em}
+.arch-area{padding:16px 16px 4px;border-bottom:1px solid var(--line)}
+.arch-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}
+.arch-head h3{margin:0;font-size:16px;font-weight:600;letter-spacing:.01em}
+.arch-head h3 span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;color:var(--ink-faint);font-weight:400;margin-top:4px;text-transform:uppercase}
+.arch-stat{text-align:right;line-height:1;flex:none}
+.arch-stat b{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.arch-stat i{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-style:normal;margin-top:4px}
+.arch-chart{width:100%;height:auto;display:block;margin:2px 0 9px}
+.arch-legend{display:flex;gap:14px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;color:var(--ink-faint);margin:-2px 0 8px;text-transform:uppercase}
+.arch-legend i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+.arch-legend .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+.arch-meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:.02em;margin-bottom:11px}
+.arch-crags{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px}
+.arch-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);
+  border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.arch-chip .cd{width:7px;height:7px;border-radius:50%;flex:none}
+.arch-chip b{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 20 L8 8 L12 14 L15 9 L22 20 Z" fill="#1f2c3a" stroke="#3ee0c4" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="17.5" cy="5.5" r="2.3" fill="#f2b441"/>
+        </svg>
+        <h1>CRAGCAST</h1>
+      </div>
+      <div class="tag">Friction forecast · PNW</div>
+    </div>
+    <div class="hctl">
+      <div class="units" role="group" aria-label="Units">
+        <button data-u="us" aria-pressed="true">°F</button>
+        <button data-u="si" aria-pressed="false">°C</button>
+      </div>
+      <div class="btnrow">
+        <button class="refresh" id="archiveBtn" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+          <span>30-day</span>
+        </button>
+        <button class="refresh" id="refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>
+          <span id="upd">Refresh</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="bestbet"></div>
+  <div id="content"></div>
+
+  <footer>
+    <div>Conditions are a model, not a promise — verify with eyes and hands on the rock. Steep, well-draining crags stay climbable through weather that shuts down slabs.</div>
+    <div style="margin-top:6px">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · dew point, wind, plus 5-day live &amp; 30-day archive rain history · scoring tuned for granite &amp; basalt friction.</div>
+  </footer>
+</div>
+
+<div id="archiveOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="30-day dry-out history" hidden>
+  <div class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="tag">Dry-out history · past 30 days</div>
+        <h2>How dried-out is the rock?</h2>
+      </div>
+      <div class="sheet-actions">
+        <button class="refresh" id="archiveRefresh" aria-label="Reload history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>
+        </button>
+        <button class="refresh" id="archiveClose">Close ✕</button>
+      </div>
+    </div>
+    <div id="archiveBody"></div>
+    <div class="sheet-foot">The dryness curve is the same decayed rain-load model that scores the crags, sampled every 6&nbsp;hours — it reflects the last ~5 days of seepage-relevant moisture, so an old storm that has fully dried won't drag it down while recent rain will. Bars are daily rainfall. Per-crag&nbsp;% is how dried-out each wall is right now, given its own drainage and steepness.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------
+   AREAS + CRAGS
+   Each area shares one weather grid cell (weather resolution is
+   coarse anyway); crags differ by the things that actually change
+   conditions at the same location: steepness, aspect/sun, drainage.
+     steep    0..1  overhung/steep sheds & stays dry (1 = rain refuge)
+     sun      0..1  sun exposure during climbing hours
+     drain    0..1  how fast rock sheds water (basalt≈1, seepy granite≈.2)
+     lagH     hours the wall lags after weather (elevation/approach)
+----------------------------------------------------------------*/
+const AREAS = [
+  { id:"index", name:"Index", lat:47.8207, lon:-121.5720, rock:"Granite",
+    region:"Skykomish Valley · WA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Lower Town Wall", steep:.45, sun:.8, drain:.28, lagH:2,
+        tags:["Granite","S face","Low-angle→vert"],
+        note:"Valley-floor humidity keeps it greasy at dawn; morning sun burns off condensation. Great Northern Slab seeps longest — the steep central lines come in first." },
+      { name:"Upper Town Wall · Cheeks", steep:.92, sun:.75, drain:.35, lagH:5,
+        tags:["Granite","Steep","Rain refuge"],
+        note:"Overhung enough to stay dry through actual rain and come back first. Higher and windier, so it lags the LTW after a system but shrugs off moisture." },
+      { name:"Lookout Point", steep:.2, sun:.4, drain:.6, lagH:2,
+        tags:["Granite","Slab","Fast-draining"],
+        note:"Slabs sheet water off and dry fast, but shaded — quick to dry, slow to warm. Needs sun on it before the friction shows up." },
+    ]},
+  { id:"squamish", name:"Squamish", lat:49.6870, lon:-123.1400, rock:"Granite",
+    region:"Sea-to-Sky · BC", tz:"America/Vancouver",
+    crags:[
+      { name:"The Chief · Grand Wall", steep:.7, sun:.7, drain:.35, lagH:3,
+        tags:["Granite","W/SW","Steep"],
+        note:"Coastal granite; steeper Grand Wall terrain sheds water better than the Apron. Afternoon sun on a W/SW aspect helps it come around late in the day." },
+      { name:"The Apron", steep:.18, sun:.65, drain:.4, lagH:2,
+        tags:["Granite","Slab","Friction-critical"],
+        note:"Low-angle friction slab — the most dew-point-sensitive terrain here. Damp air alone makes it unclimbable even when dry; wants cold, crisp, low-humidity air." },
+      { name:"Smoke Bluffs", steep:.5, sun:.6, drain:.45, lagH:1,
+        tags:["Granite","Mixed","Quick access"],
+        note:"Short walls, fast access, good spread of aspects — the pragmatic pick when the big walls are marginal or busy." },
+    ]},
+  { id:"exits", name:"The Exits", lat:47.4419, lon:-121.6556, rock:"Volcanic",
+    region:"I-90 · North Bend · WA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Exit 38 · Far Side", steep:.9, sun:.5, drain:.4, lagH:1,
+        tags:["Steep","Rain refuge","Sport"],
+        note:"The classic drizzle-day bailout — overhung enough to stay dry when everything west is dripping. Treed and low, but the steep stone keeps the holds usable." },
+      { name:"Exit 32 · Little Si", steep:.72, sun:.45, drain:.4, lagH:1,
+        tags:["Steep","Quick access","Sport"],
+        note:"Steep World-Wall terrain stays dry in light rain with a short approach. Shaded and mossy, so it warms slowly and stays humid in still air." },
+      { name:"Deception Crags", steep:.4, sun:.4, drain:.35, lagH:2,
+        tags:["Moderate","Treed","Slabby"],
+        note:"Lower-angle and heavily treed — holds moisture and dries slowly. A prime-day-only zone, not a marginal-day play." },
+    ]},
+  { id:"vantage", name:"Vantage", lat:46.9536, lon:-119.9847, rock:"Basalt",
+    region:"Frenchman Coulee · WA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Sunshine Wall", steep:.6, sun:.95, drain:.95, lagH:0,
+        tags:["Basalt","S/SW","Sun-baked"],
+        note:"Rain-shadow basalt that drains in hours — the go-to when the west side is soaked. Full sun means it bakes; in summer the friction is gone by midday and you chase shade." },
+      { name:"The Feathers", steep:.55, sun:.85, drain:.95, lagH:0,
+        tags:["Basalt","Exposed","Windy"],
+        note:"Freestanding columns that dry almost instantly but catch the full coulee wind — a light breeze is perfect here, a gale is miserable and cold." },
+      { name:"Middle Coulee", steep:.5, sun:.45, drain:.9, lagH:0,
+        tags:["Basalt","Shadier","Hot-day pick"],
+        note:"The shade option when Sunshine Wall is an oven. Same fast-draining basalt, cooler aspect — the summer-afternoon move." },
+    ]},
+];
+
+/* ---------------- units ---------------- */
+let UNIT = "us"; // us=°F/mph/in, si=°C/kmh/mm
+const cvT = f => UNIT==="us" ? f : (f-32)*5/9;
+const cvW = mph => UNIT==="us" ? mph : mph*1.60934;
+const uT = ()=> UNIT==="us" ? "°F" : "°C";
+const uW = ()=> UNIT==="us" ? "mph" : "km/h";
+const r0 = x => Math.round(x);
+const r1 = x => Math.round(x*10)/10;
+
+/* ---------------- scoring (pure, testable) ---------------- */
+// piecewise linear interpolation helper
+function lerp(x, pts){
+  if(x<=pts[0][0]) return pts[0][1];
+  for(let i=1;i<pts.length;i++){
+    if(x<=pts[i][0]){ const [x0,y0]=pts[i-1],[x1,y1]=pts[i];
+      return y0+(y1-y0)*(x-x0)/(x1-x0); }
+  }
+  return pts[pts.length-1][1];
+}
+// all temps here in °F internally
+function tempScore(T){
+  return lerp(T,[[22,.12],[32,.55],[38,1],[52,1],[60,.7],[68,.4],[78,.15],[88,.05]]);
+}
+function spreadScore(spread, dew){
+  const s = lerp(spread,[[2,.12],[5,.34],[8,.58],[12,.8],[18,.95],[22,1]]);
+  const dewPen = lerp(dew,[[55,1],[60,.92],[65,.72],[70,.48],[76,.28],[82,.15]]);
+  return s*dewPen;
+}
+function windScore(W){ // mph; light breeze ideal, both extremes bad
+  return lerp(W,[[0,.82],[4,1],[10,1],[15,.86],[22,.62],[30,.38],[42,.16]]);
+}
+// decayed recent-rain load → 0 (soaked) .. 1 (bone dry), modified by crag
+function wetnessFactor(precipNow, seepLoad, drain, steep){
+  if(precipNow>0.004){ // actively raining
+    return Math.min(.55, 0.06 + 0.5*steep + 0.12*drain);
+  }
+  const eff = seepLoad*(1 - drain*0.85)*(1 - steep*0.6);
+  return lerp(eff,[[0,1],[0.05,.92],[0.15,.78],[0.35,.55],[0.6,.4],[1,.26],[1.6,.16]]);
+}
+// sun helps burn condensation when cool+damp; hurts when hot+sunny
+function sunAdjust(T, spread, cloudPct, sun){
+  const clear = 1 - Math.min(100,Math.max(0,cloudPct))/100;
+  let d=0;
+  if(T<56 && spread<10) d += 0.12*sun*clear*(1-spread/10);
+  if(T>68)             d -= 0.16*sun*clear*Math.min(1,(T-68)/15);
+  return d;
+}
+function bucket(score, wet){
+  if(wet<0.24) return {w:"WET",   c:"var(--wet)"};
+  if(score>=80) return {w:"PRIME", c:"var(--prime)"};
+  if(score>=64) return {w:"GOOD",  c:"var(--good)"};
+  if(score>=47) return {w:"MARGINAL",c:"var(--marg)"};
+  if(score>=30) return {w:"POOR",  c:"var(--poor)"};
+  return {w:"WET", c:"var(--wet)"};
+}
+// full score for one crag given a weather sample
+function scoreCrag(crag, s){
+  const spread = s.temp - s.dew;
+  const tS=tempScore(s.temp), spS=spreadScore(spread,s.dew), wS=windScore(s.wind);
+  const wet=wetnessFactor(s.precipNow, s.seepLoad, crag.drain, crag.steep);
+  let base = 0.46*tS + 0.32*spS + 0.22*wS;
+  base *= wet;
+  const sun = sunAdjust(s.temp, spread, s.cloud, crag.sun);
+  const score01 = Math.max(0,Math.min(1, base + sun));
+  const score = r0(score01*100);
+  return { score, spread, wet, tS, spS, wS, sun, bucket:bucket(score,wet) };
+}
+// human-readable rationale
+function rationale(crag, s, r){
+  const bits=[];
+  const spr=r.spread;
+  if(s.precipNow>0.004) bits.push(crag.steep>.8 ? "Raining, but it's steep enough to stay dry underneath" : "<b>Actively wet</b> right now");
+  if(r.wet<0.5 && s.precipNow<=0.004) bits.push(crag.drain>.8 ? "Recent rain, but this rock drains fast" : "<b>Seeping</b> from recent rain — needs more dry-out");
+  if(spr<6) bits.push("tight dew-point spread ("+r0(cvT(s.temp)-cvT(s.dew))+uT()+") — greasy, humid air");
+  else if(spr>16) bits.push("wide dew-point spread — dry, thirsty air");
+  if(s.temp<54 && spr<10 && crag.sun>.6) bits.push("sun should burn off morning condensation");
+  if(s.temp>70 && crag.sun>.7) bits.push("<b>too warm in the sun</b> — friction fades midday");
+  if(s.temp>=38 && s.temp<=54) bits.push("temps in the friction band");
+  if(s.wind>22) bits.push("windy ("+r0(cvW(s.wind))+uW()+")");
+  else if(s.wind>=4&&s.wind<=12) bits.push("a drying breeze");
+  if(!bits.length) bits.push("unremarkable — middle-of-the-road conditions");
+  const cap = bits[0].charAt(0).toUpperCase()+bits[0].slice(1);
+  return cap + (bits.length>1 ? "; " + bits.slice(1).join("; ") : "") + ".";
+}
+
+/* ---------------- data ---------------- */
+function apiURL(a){
+  const p = new URLSearchParams({
+    latitude:a.lat, longitude:a.lon,
+    current:"temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,cloud_cover,wind_speed_10m,wind_gusts_10m,weather_code,is_day",
+    hourly:"temperature_2m,dew_point_2m,relative_humidity_2m,precipitation,cloud_cover,wind_speed_10m,wind_gusts_10m,is_day",
+    daily:"temperature_2m_max,temperature_2m_min,precipitation_sum",
+    temperature_unit:"fahrenheit", wind_speed_unit:"mph", precipitation_unit:"inch",
+    timezone:"auto", past_days:5, forecast_days:7
+  });
+  return "https://api.open-meteo.com/v1/forecast?"+p.toString();
+}
+async function fetchArea(a){
+  const res = await fetch(apiURL(a));
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const j = await res.json();
+  return normalize(a,j);
+}
+function normalize(a,j){
+  const H=j.hourly, times=H.time.map(t=>new Date(t));
+  const hourly = times.map((t,i)=>({
+    t, temp:H.temperature_2m[i], dew:H.dew_point_2m[i], rh:H.relative_humidity_2m[i],
+    precip:H.precipitation[i]??0, cloud:H.cloud_cover[i]??50,
+    wind:H.wind_speed_10m[i]??0, gust:H.wind_gusts_10m[i]??0, isDay:(H.is_day[i]??1)===1
+  }));
+  const C=j.current;
+  const now = {
+    temp:C.temperature_2m, dew:C.dew_point_2m, rh:C.relative_humidity_2m,
+    precipNow:C.precipitation??0, cloud:C.cloud_cover??50,
+    wind:C.wind_speed_10m??0, gust:C.wind_gusts_10m??0, code:C.weather_code,
+    t:new Date(C.time)
+  };
+  return {area:a, hourly, now, daily:j.daily, fetched:new Date()};
+}
+// decayed rain load in the ~120h before a given time
+function seepLoadAt(hourly, timeMs){
+  const HALF=42*3600e3; // ~42h decay constant
+  let load=0;
+  for(const h of hourly){
+    const dt = timeMs - h.t.getTime();
+    if(dt>0 && dt < 120*3600e3) load += (h.precip||0)*Math.exp(-dt/HALF);
+  }
+  return load;
+}
+// aggregate a day's climbing window (10:00–17:00 local) for forecast strip
+function dayWindows(hourly){
+  const byDate={};
+  for(const h of hourly){
+    const hr=h.t.getHours();
+    const key=h.t.getFullYear()+"-"+(h.t.getMonth()+1)+"-"+h.t.getDate();
+    (byDate[key]=byDate[key]||{date:new Date(h.t.getFullYear(),h.t.getMonth(),h.t.getDate(),13),all:[],win:[]}).all.push(h);
+    if(hr>=10&&hr<=17) byDate[key].win.push(h);
+  }
+  return Object.values(byDate).map(d=>{
+    const w = d.win.length?d.win:d.all;
+    const avg=k=>w.reduce((s,h)=>s+h[k],0)/w.length;
+    const precipDay=d.all.reduce((s,h)=>s+(h.precip||0),0);
+    return { date:d.date, temp:avg("temp"), dew:avg("dew"), wind:avg("wind"),
+             cloud:avg("cloud"), hi:Math.max(...d.all.map(h=>h.temp)),
+             precipDay, seepLoad:seepLoadAt(hourly, d.date.getTime()),
+             precipNow: (d.win.reduce((s,h)=>s+(h.precip||0),0)>0.02)?0.05:0 };
+  }).sort((a,b)=>a.date-b.date);
+}
+
+/* ---------------- render ---------------- */
+const $=s=>document.querySelector(s);
+const content=$("#content"), bestEl=$("#bestbet");
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function nowSample(d){
+  return { temp:d.now.temp, dew:d.now.dew, wind:d.now.wind, cloud:d.now.cloud,
+           precipNow:d.now.precipNow, seepLoad:seepLoadAt(d.hourly, d.now.t.getTime()) };
+}
+
+function render(all){
+  // best bet across every crag, right now
+  let best=null;
+  for(const d of all){ if(d.error) continue;
+    const s=nowSample(d);
+    for(const c of d.area.crags){ const r=scoreCrag(c,s);
+      if(!best||r.score>best.r.score) best={area:d.area,crag:c,r,s}; }
+  }
+  if(best){
+    const b=best.r.bucket;
+    bestEl.innerHTML=`<div class="bestbet"><span class="accent" style="background:${b.c}"></span>
+      <div class="eye">Best bet right now</div>
+      <div class="line">
+        <span class="pick"><b style="color:${b.c}">${best.area.name}</b> · ${best.crag.name}</span>
+        <span class="sub" style="color:${b.c}">${b.w} · ${best.r.score}</span>
+      </div>
+      <div class="sub" style="margin-top:5px">${r0(cvT(best.s.temp))}${uT()} · spread ${r0(cvT(best.s.temp)-cvT(best.s.dew))}${uT()} · ${best.s.precipNow>0.004?"raining":"dry"}</div>
+    </div>`;
+  } else bestEl.innerHTML="";
+
+  content.innerHTML="";
+  for(const d of all){
+    const area=d.area;
+    const wrap=document.createElement("section"); wrap.className="area";
+
+    if(d.error){
+      wrap.innerHTML=`<div class="area-head"><h2>${area.name}</h2><span class="meta">${area.region}</span></div>
+        <div class="state"><b>Couldn't reach the forecast for ${area.name}</b>${d.error}<br>Check your connection, then try again.
+        <br><button onclick="load()">Retry</button></div>`;
+      content.appendChild(wrap); continue;
+    }
+
+    const s=nowSample(d);
+    const days=dayWindows(d.hourly).filter(x=>x.date.getTime()>=new Date().setHours(0,0,0,0)).slice(0,6);
+    // 5-day recent rain sparkline (past days)
+    const past=dayWindows(d.hourly).filter(x=>x.date.getTime()<new Date().setHours(0,0,0,0)).slice(-5);
+    const maxR=Math.max(0.02,...past.map(p=>p.precipDay));
+    const spark=past.map(p=>`<i style="height:${Math.max(2,r0(p.precipDay/maxR*16))}px;background:${p.precipDay>0.01?'var(--good)':'var(--line-strong)'}"></i>`).join("");
+    const rain5=r1(past.reduce((s,p)=>s+p.precipDay,0));
+
+    const head=document.createElement("div"); head.className="area-head";
+    head.innerHTML=`<h2>${area.name}</h2><span class="meta">${area.region}</span>
+      <span class="rain" title="Rain over the past 5 days">${UNIT==="us"?rain5+'"':r1(rain5*25.4)+'mm'} / 5d <span class="spark">${spark}</span></span>`;
+    wrap.appendChild(head);
+
+    for(const c of area.crags){
+      const r=scoreCrag(c,s), b=r.bucket;
+      const det=document.createElement("details"); det.className="crag";
+      const spreadDisp=r0(cvT(s.temp)-cvT(s.dew));
+      const strip=days.map(dy=>{
+        const dr=scoreCrag(c,{temp:dy.temp,dew:dy.dew,wind:dy.wind,cloud:dy.cloud,precipNow:dy.precipNow,seepLoad:dy.seepLoad});
+        return `<div class="day"><div class="d">${DOW[dy.date.getDay()]}</div>
+          <div class="dot" style="background:${dr.bucket.c}"></div>
+          <div class="hi">${r0(cvT(dy.hi))}°</div><div class="sc">${dr.score}</div></div>`;
+      }).join("");
+
+      det.innerHTML=`
+        <summary>
+          <div class="cname">
+            <span class="n">${c.name}</span>
+            <span class="tags">${c.tags.map(t=>`<span class="chip">${t}</span>`).join("")}</span>
+          </div>
+          <div class="badge">
+            <span class="word" style="color:${b.c}">${b.w}</span>
+            <span class="score" style="color:${b.c}">${r.score}<small>/100</small></span>
+          </div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+
+          <div class="readouts">
+            <div class="ro"><div class="k">Temp</div><div class="v">${r0(cvT(s.temp))}<small>${uT()}</small></div></div>
+            <div class="ro"><div class="k">Dew pt</div><div class="v">${r0(cvT(s.dew))}<small>${uT()}</small></div></div>
+            <div class="ro"><div class="k">Spread</div><div class="v" style="color:${spreadDisp>=(UNIT==='us'?12:7)?'var(--prime)':spreadDisp<=(UNIT==='us'?6:3)?'var(--poor)':'var(--ink)'}">${spreadDisp}<small>${uT()}</small></div></div>
+            <div class="ro"><div class="k">Wind</div><div class="v">${r0(cvW(s.wind))}<small>${uW()}</small></div></div>
+          </div>
+
+          <div class="meter">
+            <div class="track"><span class="needle" style="left:${Math.max(2,Math.min(98,r.score))}%"></span></div>
+            <div class="scale"><span>Wet</span><span>Poor</span><span>Marginal</span><span>Good</span><span>Prime</span></div>
+          </div>
+
+          <div class="strip">${strip}</div>
+
+          <div class="detail">
+            <p class="why"><b>Why ${r.score}:</b> ${rationale(c,s,r)}</p>
+            <p class="note">${c.note}</p>
+          </div>
+        </summary>`;
+      // prevent <summary> grid children from toggling weirdly: keep native toggle on summary
+      wrap.appendChild(det);
+    }
+    content.appendChild(wrap);
+  }
+  const t=new Date();
+  $("#upd").textContent = t.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+}
+
+/* ---------------- load / controls ---------------- */
+let LAST=null;
+function skeleton(){
+  content.innerHTML = AREAS.map(()=>`<div class="skel"></div>`).join("");
+  bestEl.innerHTML="";
+}
+async function load(){
+  const btn=$("#refresh"); btn.classList.add("spin");
+  if(!LAST) skeleton();
+  try{
+    const all = await Promise.all(AREAS.map(async a=>{
+      try{ return await fetchArea(a); }
+      catch(e){ return {area:a, error:String(e.message||e)}; }
+    }));
+    LAST=all; render(all);
+  }catch(e){
+    content.innerHTML=`<div class="state"><b>Something went wrong</b>${e.message||e}<br><button onclick="load()">Try again</button></div>`;
+  }finally{ btn.classList.remove("spin"); }
+}
+document.querySelectorAll(".units button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    UNIT=b.dataset.u;
+    document.querySelectorAll(".units button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    if(LAST) render(LAST);
+  });
+});
+$("#refresh").addEventListener("click",load);
+
+/* ---------------- 30-day dry-out archive ---------------- */
+const ARCHIVE = {};                       // cache by area id ("loading" | data | {error})
+const overlay = document.getElementById("archiveOverlay");
+
+function archiveURL(a){
+  const p = new URLSearchParams({
+    latitude:a.lat, longitude:a.lon,
+    hourly:"precipitation",
+    daily:"precipitation_sum,temperature_2m_max,precipitation_hours",
+    precipitation_unit:"inch", temperature_unit:"fahrenheit",
+    timezone:"auto", past_days:31, forecast_days:1
+  });
+  return "https://api.open-meteo.com/v1/forecast?"+p.toString();
+}
+async function fetchArchive(a){
+  const res = await fetch(archiveURL(a));
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const j = await res.json();
+  const hourly = j.hourly.time.map((t,i)=>({ t:new Date(t), precip:j.hourly.precipitation[i]||0 }));
+  const daily  = j.daily.time.map((t,i)=>({ t:new Date(t+"T12:00"),
+    rain:j.daily.precipitation_sum[i]||0, hi:j.daily.temperature_2m_max[i], hrs:j.daily.precipitation_hours[i]||0 }));
+  return { hourly, daily, fetched:new Date() };
+}
+
+const dryColor = p => p>=80?"var(--prime)":p>=62?"var(--good)":p>=45?"var(--marg)":p>=30?"var(--poor)":"var(--wet)";
+const fmtRain  = inch => UNIT==="us" ? (r1(inch)+'"') : (r0(inch*25.4)+"mm");
+
+function archiveChart(d){
+  const days = d.daily.slice(-31);
+  const t0 = days[0].t.getTime(), tN = Date.now();
+  const W=700, VH=200, padL=30, padR=14, padT=16, padB=26;
+  const plotW=W-padL-padR, plotH=VH-padT-padB, base=padT+plotH;
+  const xForT = ms => padL + ((ms-t0)/(tN-t0))*plotW;
+  const maxRain = Math.max(0.06, ...days.map(x=>x.rain));
+  const bw = Math.max(3, plotW/days.length*0.62);
+
+  let bars="";
+  for(const dd of days){
+    if(dd.rain<=0.001) continue;
+    const x=xForT(dd.t.getTime()), h=(dd.rain/maxRain)*(plotH*0.5);
+    bars += `<rect x="${(x-bw/2).toFixed(1)}" y="${(base-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="var(--good)" opacity="0.30"/>`;
+  }
+  const pts=[];
+  for(let ms=t0; ms<=tN; ms+=6*3600e3){
+    const dry = wetnessFactor(0, seepLoadAt(d.hourly, ms), 0.4, 0.25)*100;
+    pts.push([xForT(ms), padT+(1-dry/100)*plotH]);
+  }
+  const poly = pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const areaPoly = `${padL},${base} ${poly} ${(padL+plotW).toFixed(1)},${base}`;
+
+  let grid="";
+  [0,50,100].forEach(v=>{ const y=(padT+(1-v/100)*plotH).toFixed(1);
+    grid += `<line x1="${padL}" y1="${y}" x2="${padL+plotW}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`; });
+  let xlab="";
+  for(let k=0;k<=4;k++){ const ms=t0+(tN-t0)*k/4, dt=new Date(ms), x=xForT(ms);
+    xlab += `<text x="${x.toFixed(1)}" y="${VH-8}" fill="var(--ink-faint)" font-size="9" font-family="IBM Plex Mono,monospace" text-anchor="${k===0?'start':k===4?'end':'middle'}">${dt.getMonth()+1}/${dt.getDate()}</text>`; }
+  const todayX = xForT(tN).toFixed(1);
+
+  return `<svg viewBox="0 0 ${W} ${VH}" class="arch-chart" role="img" aria-label="Daily rainfall bars and a ground-dryness curve over the past 30 days">
+    ${grid}
+    <text x="1" y="${padT+4}" fill="var(--ink-faint)" font-size="8" font-family="IBM Plex Mono,monospace">DRY</text>
+    <text x="1" y="${base}" fill="var(--ink-faint)" font-size="8" font-family="IBM Plex Mono,monospace">WET</text>
+    ${bars}
+    <polygon points="${areaPoly}" fill="var(--prime)" opacity="0.09"/>
+    <polyline points="${poly}" fill="none" stroke="var(--prime)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="${todayX}" y1="${padT}" x2="${todayX}" y2="${base}" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="2 3"/>
+    ${xlab}
+  </svg>`;
+}
+
+function archiveStats(d){
+  const days=d.daily.slice(-31);
+  let since=null, sig=null;
+  for(let i=days.length-1;i>=0;i--){
+    const ago=days.length-1-i;
+    if(since===null && days[i].rain>=0.01) since=ago;
+    if(sig===null   && days[i].rain>=0.10) sig=ago;
+  }
+  return { since, sig, total:days.reduce((s,x)=>s+x.rain,0) };
+}
+
+function renderArchive(){
+  const body=document.getElementById("archiveBody"); body.innerHTML="";
+  for(const a of AREAS){
+    const sec=document.createElement("section"); sec.className="arch-area";
+    const c=ARCHIVE[a.id];
+    if(c==="loading"){
+      sec.innerHTML=`<div class="arch-head"><h3>${a.name} <span>${a.rock} · ${a.region}</span></h3></div><div class="skel" style="height:170px;margin:0 0 14px"></div>`;
+      body.appendChild(sec); continue;
+    }
+    if(!c || c.error){
+      sec.innerHTML=`<div class="arch-head"><h3>${a.name} <span>${a.rock} · ${a.region}</span></h3></div>
+        <div class="state" style="margin-bottom:14px"><b>Couldn't load history</b>${c&&c.error?c.error:"No data"}<br><button onclick="reloadArchive()">Retry</button></div>`;
+      body.appendChild(sec); continue;
+    }
+    const st=archiveStats(c);
+    const nowLoad=seepLoadAt(c.hourly, Date.now());
+    const chips=a.crags.map(cr=>{ const dry=r0(wetnessFactor(0,nowLoad,cr.drain,cr.steep)*100);
+      return `<span class="arch-chip"><span class="cd" style="background:${dryColor(dry)}"></span>${cr.name}<b style="color:${dryColor(dry)}">${dry}%</b></span>`; }).join("");
+    const bigNum = st.since===null ? "31+" : st.since;
+    const bigLab = st.since===0 ? "raining now" : "days dry";
+    const sinceTxt = st.since===null ? "no measurable rain in 31 days"
+                    : st.since===0 ? "rain recorded today"
+                    : st.since+(st.since===1?" day":" days")+" since measurable rain";
+    const sigTxt = st.sig==null ? "" : " · last soaking "+(st.sig===0?"today":st.sig+"d ago");
+
+    sec.innerHTML=`
+      <div class="arch-head">
+        <h3>${a.name} <span>${a.rock} · ${a.region}</span></h3>
+        <div class="arch-stat"><b style="color:${dryColor(r0(wetnessFactor(0,nowLoad,0.4,0.25)*100))}">${bigNum}</b><i>${bigLab}</i></div>
+      </div>
+      ${archiveChart(c)}
+      <div class="arch-legend"><i><span class="sw" style="background:var(--good);opacity:.5"></span>Daily rain</i><i><span class="sw" style="background:var(--prime)"></span>Ground dryness</i></div>
+      <div class="arch-meta">${sinceTxt} · 30-day total ${fmtRain(st.total)}${sigTxt}</div>
+      <div class="arch-crags">${chips}</div>`;
+    body.appendChild(sec);
+  }
+}
+
+async function openArchive(){
+  overlay.hidden=false; document.body.style.overflow="hidden";
+  const need=AREAS.filter(a=>!ARCHIVE[a.id]||ARCHIVE[a.id]==="loading"||ARCHIVE[a.id].error);
+  need.forEach(a=>ARCHIVE[a.id]="loading");
+  renderArchive();
+  await Promise.all(need.map(async a=>{
+    try{ ARCHIVE[a.id]=await fetchArchive(a); }
+    catch(e){ ARCHIVE[a.id]={error:String(e.message||e)}; }
+  }));
+  if(!overlay.hidden) renderArchive();
+}
+function reloadArchive(){ for(const a of AREAS) delete ARCHIVE[a.id]; openArchive(); }
+function closeArchive(){ overlay.hidden=true; document.body.style.overflow=""; }
+
+document.getElementById("archiveBtn").addEventListener("click",openArchive);
+document.getElementById("archiveClose").addEventListener("click",closeArchive);
+document.getElementById("archiveRefresh").addEventListener("click",reloadArchive);
+overlay.addEventListener("click",e=>{ if(e.target===overlay) closeArchive(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!overlay.hidden) closeArchive(); });
+
+load();
+setInterval(load, 15*60*1000); // auto-refresh every 15 min
+
+// PWA service worker (no-ops in the artifact sandbox; works when deployed)
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
