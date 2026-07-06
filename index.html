@@ -109,18 +109,26 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .meter .needle{position:absolute;top:-3px;width:3px;height:15px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);transform:translateX(-50%)}
 .meter .scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px;text-transform:uppercase}
 
-/* sun-exposure row (aspect + when it's lit) */
+/* day-timeline row: hourly friction bar + sun-exposure bar (aspect compass at left) */
 .sunrow{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:9px}
 .sunrow .compass{width:28px;height:28px;flex:none}
 .sunwrap{flex:1;min-width:0}
-.suntrack{position:relative;display:flex;gap:1px;height:10px;border-radius:5px}
-.suntrack i{flex:1;display:block}
-.suntrack i:first-child{border-radius:5px 0 0 5px}
-.suntrack i:last-child{border-radius:0 5px 5px 0}
-.sunnow{position:absolute;top:-2px;width:2px;height:14px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);transform:translateX(-50%)}
-.sunaxis{display:flex;gap:1px;margin-top:3px}
+.vizrow{display:flex;align-items:center;gap:6px}
+.vizrow + .vizrow{margin-top:3px}
+.vk{flex:none;width:30px;font-family:var(--mono);font-size:8px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);text-align:right}
+.viztrack{position:relative;flex:1;min-width:0;display:flex;gap:1px;height:11px;border-radius:5px}
+.viztrack i{flex:1;display:block}
+.viztrack i:first-child{border-radius:5px 0 0 5px}
+.viztrack i:last-child{border-radius:0 5px 5px 0}
+.viztrack.fric .fricell{cursor:pointer}
+.fricell.sel{outline:2px solid #fff;outline-offset:-1px}
+.sunnow{position:absolute;top:-2px;height:15px;width:2px;background:rgba(255,255,255,.5);transform:translateX(-50%);pointer-events:none}
+.timemark{position:absolute;top:-3px;height:17px;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);transform:translateX(-50%);pointer-events:none}
+.sunaxis{flex:1;min-width:0;display:flex;gap:1px}
 .sunaxis span{flex:1;text-align:center;font-family:var(--mono);font-size:7px;line-height:1;color:var(--ink-faint);white-space:nowrap;overflow:hidden}
-.sunmeta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-top:4px}
+.sunmeta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;padding-left:36px}
+.sunmeta b{color:var(--ink);font-weight:600}
+.vhint{text-transform:none;letter-spacing:.02em;color:var(--ink-faint)}
 
 /* forecast strip */
 .strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px}
@@ -624,12 +632,24 @@ function nowSample(d){
 /* ---------------- date filter + search state ---------------- */
 const dateKey = t => t.getFullYear()+"-"+(t.getMonth()+1)+"-"+t.getDate();
 let SELECTED_DATE = new Date();            // the day scores represent
+let SELECTED_HOUR = null;                  // pinned local hour (null = live/aggregate default)
 let SEARCH = "";
+const EXPANDED = new Set();                 // crag names whose explanation is open (persist across re-renders)
 const isSelToday = ()=> dateKey(SELECTED_DATE)===dateKey(new Date());
 
-// weather sample for the selected date — live conditions if today, else that
-// day's climbing-window aggregate. Falls back to now if the date isn't in range.
+// weather sample for a specific local hour on the selected date (null if no data)
+function sampleAtHour(d, h){
+  const y=SELECTED_DATE.getFullYear(), m=SELECTED_DATE.getMonth(), dd=SELECTED_DATE.getDate();
+  const hr = d.hourly.find(x=> x.t.getFullYear()===y && x.t.getMonth()===m && x.t.getDate()===dd && x.t.getHours()===h);
+  if(!hr) return null;
+  return { temp:hr.temp, dew:hr.dew, wind:hr.wind, cloud:hr.cloud,
+           precipNow:hr.precip||0, seepLoad:seepLoadAt(d.hourly, hr.t.getTime()) };
+}
+
+// weather sample driving a crag's headline — pinned hour if one is chosen,
+// else live conditions (today) or the day's climbing-window aggregate.
 function sampleForDate(d){
+  if(SELECTED_HOUR!=null){ const s=sampleAtHour(d, SELECTED_HOUR); if(s) return s; }
   if(isSelToday()) return nowSample(d);
   const key = dateKey(SELECTED_DATE);
   const match = dayWindows(d.hourly).find(x=>dateKey(x.date)===key);
@@ -644,6 +664,12 @@ function selectDate(dt){
   if(dateKey(d)===dateKey(SELECTED_DATE)) return;
   SELECTED_DATE=d;
   buildDateBar();          // updates which pill reads as selected
+  if(LAST) render(LAST);
+}
+
+// pin (or, if already pinned, clear) a time-of-day for the scores
+function selectHour(h){
+  SELECTED_HOUR = (SELECTED_HOUR===h) ? null : h;
   if(LAST) render(LAST);
 }
 
@@ -774,37 +800,74 @@ function compassSVG(face){
     <line x1="14" y1="14" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="#ffbe5a" stroke-width="2" stroke-linecap="round"/>
     <circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="2" fill="#ffbe5a"/></svg>`;
 }
-// the whole sun-exposure element for one crag
-function sunHTML(area, crag){
-  const cells = sunTimeline(area, crag);
-  // absolute intensity (0=none .. ~0.95=high overhead sun on the wall) — honest across aspects
-  const seg = cells.map(c=>{
+// hourly friction + sun bars for one crag, sharing a time axis.
+// The friction bar is tappable to pin a time-of-day for the scores.
+function dayVizHTML(d, crag){
+  const area = d.area;
+  const NH = SUN_H1-SUN_H0+1;                 // number of hourly cells
+  const frac = t => ((t-SUN_H0)/NH)*100;      // block-model x-position (%)
+
+  // --- sun-exposure bar (absolute intensity, honest across aspects) ---
+  const sunCells = sunTimeline(area, crag);
+  const sunSeg = sunCells.map(c=>{
     const v = Math.min(1, c.inten);
     const bg = v>0.10 ? `rgba(255,190,90,${(0.25+0.7*v).toFixed(2)})` : (c.up?"var(--line-strong)":"var(--bg2)");
     return `<i style="background:${bg}"></i>`;
   }).join("");
-  const axis = cells.map(c=>`<span>${fmtHour(c.h)}</span>`).join("");
+
+  // --- friction bar (bucket colour per hour) ---
+  const fri=[];
+  for(let h=SUN_H0; h<=SUN_H1; h++){
+    const s = sampleAtHour(d, h);
+    if(!s){ fri.push({h, score:null}); continue; }
+    const r = scoreCrag(crag, s);
+    fri.push({h, score:r.score, color:r.bucket.c, word:r.bucket.w});
+  }
+  const friSeg = fri.map(c=>{
+    const sel = SELECTED_HOUR===c.h;
+    const bg = c.score==null ? "var(--bg2)" : c.color;
+    const tt = c.score==null ? "—" : `${fmtHour(c.h)} · ${c.word} ${c.score}`;
+    return `<i class="fricell${sel?" sel":""}" data-h="${c.h}" title="${tt}" style="background:${bg}"></i>`;
+  }).join("");
+
+  const axis = sunCells.map(c=>`<span>${fmtHour(c.h)}</span>`).join("");
+
+  // markers
   let nowM="";
   if(isSelToday()){
     const nh=nowLocalHour(area.tz);
-    if(nh>=SUN_H0 && nh<=SUN_H1) nowM=`<span class="sunnow" style="left:${((nh-SUN_H0)/(SUN_H1-SUN_H0)*100).toFixed(1)}%"></span>`;
+    if(nh>=SUN_H0 && nh<=SUN_H1+1) nowM=`<span class="sunnow" style="left:${frac(nh).toFixed(1)}%"></span>`;
   }
-  const lit = cells.filter(c=> c.inten > 0.15);   // meaningful direct sun
+  const inRange = SELECTED_HOUR!=null && SELECTED_HOUR>=SUN_H0 && SELECTED_HOUR<=SUN_H1;
+  const timeM = inRange ? `<span class="timemark" style="left:${frac(SELECTED_HOUR+0.5).toFixed(1)}%"></span>` : "";
+
+  // aspect + sun summary
+  const lit = sunCells.filter(c=> c.inten > 0.15);
   const litTxt = lit.length ? `sun ${fmtHour(lit[0].h)}–${fmtHour(lit[lit.length-1].h)}`
                             : (crag.face==="mixed" ? "low sun" : "mostly shade");
-  const label = crag.face==="mixed" ? "Varied aspect" : compass8(crag.face)+"-facing";
+  const aLabel = crag.face==="mixed" ? "Varied aspect" : compass8(crag.face)+"-facing";
+
+  // selected-time readout
+  let selTxt;
+  if(inRange){ const c=fri.find(x=>x.h===SELECTED_HOUR);
+    selTxt = (c && c.score!=null) ? `<b>${fmtHour(SELECTED_HOUR)} · ${c.word} ${c.score}</b>` : `${fmtHour(SELECTED_HOUR)} · —`;
+  } else selTxt = `<span class="vhint">tap the grip bar to pick a time</span>`;
+
   return `<div class="sunrow">
     ${compassSVG(crag.face)}
     <div class="sunwrap">
-      <div class="suntrack">${seg}${nowM}</div>
-      <div class="sunaxis">${axis}</div>
-      <div class="sunmeta"><span>${label}</span><span>${litTxt}</span></div>
+      <div class="vizrow"><span class="vk">Grip</span><div class="viztrack fric">${friSeg}${timeM}</div></div>
+      <div class="vizrow"><span class="vk">Sun</span><div class="viztrack sun">${sunSeg}${nowM}${timeM}</div></div>
+      <div class="vizrow"><span class="vk"></span><div class="sunaxis">${axis}</div></div>
+      <div class="sunmeta"><span>${aLabel} · ${litTxt}</span><span>${selTxt}</span></div>
     </div>
   </div>`;
 }
 
 function render(all){
-  const whenLabel = isSelToday() ? "right now" : SELECTED_DATE.toLocaleDateString([], {weekday:"short", month:"short", day:"numeric"});
+  const dayLabel = isSelToday() ? "today" : SELECTED_DATE.toLocaleDateString([], {weekday:"short", month:"short", day:"numeric"});
+  const whenLabel = SELECTED_HOUR!=null ? dayLabel+" · "+fmtHour(SELECTED_HOUR)
+                                        : (isSelToday() ? "right now" : dayLabel);
 
   content.innerHTML="";
   const searching = SEARCH.trim().length>0;
@@ -856,6 +919,8 @@ function render(all){
     for(const c of crags){
       const r=scoreCrag(c,s), b=r.bucket;
       const det=document.createElement("details"); det.className="crag";
+      det.dataset.crag=c.name;
+      const isOpen=EXPANDED.has(c.name);
       const spreadDisp=r0(cvT(s.temp)-cvT(s.dew));
       const strip=days.map(dy=>{
         const dr=scoreCrag(c,{temp:dy.temp,dew:dy.dew,wind:dy.wind,cloud:dy.cloud,precipNow:dy.precipNow,seepLoad:dy.seepLoad});
@@ -888,11 +953,11 @@ function render(all){
             <div class="scale"><span>Wet</span><span>Poor</span><span>Marginal</span><span>Good</span><span>Prime</span></div>
           </div>
 
-          ${sunHTML(area,c)}
+          ${dayVizHTML(d,c)}
 
           <div class="strip">${strip}</div>
 
-          <button type="button" class="ddbtn" aria-expanded="false" aria-label="Toggle score explanation">
+          <button type="button" class="ddbtn" aria-expanded="${isOpen?"true":"false"}" aria-label="Toggle score explanation">
             <span>Why ${r.score}</span>
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
           </button>
@@ -901,7 +966,7 @@ function render(all){
             <p class="note">${c.note}</p>
           </div>
         </summary>`;
-      // prevent <summary> grid children from toggling weirdly: keep native toggle on summary
+      det.open=isOpen;                       // restore persisted expanded state
       wrap.appendChild(det);
     }
     content.appendChild(wrap); shown++;
@@ -971,10 +1036,14 @@ content.addEventListener("click", e=>{
   e.preventDefault();                           // dropdown button is the only expander
   const dd  = e.target.closest(".ddbtn");
   const day = e.target.closest(".day");
+  const fri = e.target.closest(".fricell");
   if(dd){
     const det = summary.parentElement;
     det.open = !det.open;
+    if(det.open) EXPANDED.add(det.dataset.crag); else EXPANDED.delete(det.dataset.crag);
     dd.setAttribute("aria-expanded", det.open ? "true" : "false");
+  } else if(fri && fri.dataset.h!=null){
+    selectHour(+fri.dataset.h);
   } else if(day && day.dataset.ts){
     selectDate(new Date(+day.dataset.ts));
   }
