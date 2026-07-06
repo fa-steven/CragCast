@@ -170,6 +170,12 @@ footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
   font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--ink-faint);letter-spacing:.03em}
 footer a{color:var(--ink-dim)}
 .updated{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em}
+.feedback{display:inline-flex;align-items:center;gap:7px;margin-bottom:13px;
+  background:var(--card2);border:1px solid var(--line-strong);border-radius:9px;padding:8px 13px;
+  color:var(--ink-dim);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-decoration:none;
+  transition:background .15s,color .15s,border-color .15s}
+.feedback:hover{background:var(--raise);color:var(--ink);border-color:var(--line-strong)}
+.feedback svg{width:13px;height:13px;flex:none}
 
 @media(max-width:440px){
   .readouts{grid-template-columns:repeat(4,1fr)}
@@ -180,6 +186,15 @@ footer a{color:var(--ink-dim)}
 
 /* ---- controls: date filter + search ---- */
 .controls{display:flex;flex-direction:column;gap:9px;margin:0 2px 15px}
+/* state + area filter pill rows */
+.filterbar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px}
+.filterbar::-webkit-scrollbar{display:none}
+.fpill{flex:none;background:var(--card);border:1px solid var(--line-strong);border-radius:999px;padding:6px 12px;cursor:pointer;
+  font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--ink-dim);white-space:nowrap;
+  transition:background .15s,color .15s,border-color .15s}
+.fpill:hover{color:var(--ink)}
+.fpill[aria-pressed="true"]{background:var(--raise);color:var(--ink);border-color:var(--prime)}
+.fpill.sub[aria-pressed="true"]{border-color:var(--good)}
 #dateSentinel{height:1px;margin-bottom:-1px}
 .datebar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 0 3px;scrollbar-width:none;
   position:sticky;top:0;z-index:40;border-radius:0 0 12px 12px;
@@ -269,6 +284,8 @@ footer a{color:var(--ink-dim)}
   </header>
 
   <div class="controls">
+    <div class="filterbar" id="statebar" role="group" aria-label="State"></div>
+    <div class="filterbar" id="areabar" role="group" aria-label="Climbing area"></div>
     <div id="dateSentinel" aria-hidden="true"></div>
     <div class="datebar" id="datebar" role="group" aria-label="Forecast date"></div>
     <div class="searchbox" id="searchbox">
@@ -281,6 +298,10 @@ footer a{color:var(--ink-dim)}
   <div id="content"></div>
 
   <footer>
+    <a class="feedback" href="https://forms.gle/nvfhRqWrQFFxhXY18" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Send feedback
+    </a>
     <div>Conditions are a model, not a promise — verify with eyes and hands on the rock. Steep, well-draining crags stay climbable through weather that shuts down slabs.</div>
     <div style="margin-top:6px">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · dew point, wind, plus 5-day live &amp; 30-day archive rain history · scoring tuned for granite &amp; basalt friction.</div>
   </footer>
@@ -327,11 +348,16 @@ const AREAS = [
         walls:["Great Northern Slab","Godzilla","City Park","Davis-Holland","Slow Children","The Country"],
         aka:["LTW","GNS"],
         note:"Valley-floor humidity keeps it greasy at dawn; morning sun burns off condensation. Great Northern Slab seeps longest — the steep central lines come in first." },
-      { name:"Upper Town Wall · Cheeks", steep:.92, sun:.75, drain:.35, lagH:5,
+      { name:"Upper Town Wall · Cheeks", steep:.92, sun:.72, drain:.35, lagH:4,
         tags:["Granite","Steep","Rain refuge"],
-        walls:["The Cheeks","Town Crier","Green Dragon","Wildest Dreams","Golden Road","Heaven's Gate"],
-        aka:["UTW"],
-        note:"Overhung enough to stay dry through actual rain and come back first. Higher and windier, so it lags the LTW after a system but shrugs off moisture." },
+        walls:["The Cheeks"],
+        aka:["UTW Cheeks","Cheeks"],
+        note:"The overhung corner of the Upper Wall — steep enough to stay dry through actual rain and the first thing to come back after a system. Top-ropeable, and the go-to when everything else at Index is still seeping." },
+      { name:"Upper Town Wall", steep:.5, sun:.75, drain:.25, lagH:6,
+        tags:["Granite","Multi-pitch","Seepy"],
+        walls:["Town Crier","Green Dragon","Wildest Dreams","Golden Road","Heaven's Gate"],
+        aka:["UTW","Upper Wall"],
+        note:"The tall multipitch main wall (Town Crier, Green Dragon). Less than vertical and topping onto a sloping hillside, so it takes rain and seeps for days. Higher and more committing than the LTW — a prime-stable-spell objective, not a marginal-day play." },
       { name:"Lookout Point", steep:.2, sun:.4, drain:.6, lagH:2,
         tags:["Granite","Slab","Fast-draining"],
         walls:["Private Idaho","Lookout Point Proper","Duck Wall","Mosquito Wall","The Diamond","Rattletale Wall"],
@@ -460,15 +486,20 @@ const AREAS = [
    "mixed" = genuinely multi-aspect (columns/spires or a spread of walls).
    Derived from area orientation, guidebook aspect notes, and per-crag research. */
 const FACES = {
-  "Lower Town Wall":180, "Upper Town Wall · Cheeks":190, "Lookout Point":95,
+  "Lower Town Wall":180, "Upper Town Wall · Cheeks":185, "Upper Town Wall":185, "Lookout Point":95,
   "The Chief · Grand Wall":250, "The Apron":245, "Smoke Bluffs":"mixed",
-  "Exit 38 · Far Side":110, "Exit 32 · Little Si":140, "Deception Crags":30,
+  "Exit 38 · Far Side":175, "Exit 32 · Little Si":90, "Deception Crags":"mixed",
   "Sunshine Wall":200, "The Feathers":"mixed", "Middle Coulee":0,
   "The Dihedrals":130, "Morning Glory Wall":90, "Christian Brothers · The Monument":"mixed",
   "Hanging Gardens":215, "North Face":350, "Red Wall · Trinity":220,
   "Main Wall":180, "Castle Wall":205, "Cool Wall":0
 };
 AREAS.forEach(a=>a.crags.forEach(c=>{ c.face = (c.name in FACES) ? FACES[c.name] : "mixed"; }));
+
+/* ---- state / region each area belongs to (for the top filters) ---- */
+const STATES = [ {code:"WA", name:"Washington"}, {code:"BC", name:"British Columbia"}, {code:"OR", name:"Oregon"} ];
+const AREA_STATE = { index:"WA", squamish:"BC", exits:"WA", vantage:"WA", smith:"OR", broughton:"OR", troutcreek:"OR" };
+AREAS.forEach(a=>{ a.state = AREA_STATE[a.id] || ""; });
 
 /* ---------------- units ---------------- */
 let UNIT = "us"; // us=°F/mph/in, si=°C/kmh/mm
@@ -633,6 +664,8 @@ function nowSample(d){
 const dateKey = t => t.getFullYear()+"-"+(t.getMonth()+1)+"-"+t.getDate();
 let SELECTED_DATE = new Date();            // the day scores represent
 let SELECTED_HOUR = null;                  // pinned local hour (null = live/aggregate default)
+let SELECTED_STATE = "WA";                 // "all" | "WA" | "BC" | "OR"  (default view)
+let SELECTED_AREA = "index";               // "all" | area id            (default view)
 let SEARCH = "";
 const EXPANDED = new Set();                 // crag names whose explanation is open (persist across re-renders)
 const isSelToday = ()=> dateKey(SELECTED_DATE)===dateKey(new Date());
@@ -671,6 +704,66 @@ function selectDate(dt){
 function selectHour(h){
   SELECTED_HOUR = (SELECTED_HOUR===h) ? null : h;
   if(LAST) render(LAST);
+}
+
+/* ---------------- state + area filters ---------------- */
+function selectState(code){
+  SELECTED_STATE = code;
+  SELECTED_AREA = "all";                 // area list changes with state
+  buildStateBar(); buildAreaBar();
+  if(LAST) render(LAST);
+}
+function selectArea(id){
+  SELECTED_AREA = id;
+  buildAreaBar();
+  if(LAST) render(LAST);
+}
+function clearFilters(){
+  SELECTED_STATE="all"; SELECTED_AREA="all";
+  buildStateBar(); buildAreaBar();
+  if(LAST) render(LAST);
+}
+function buildStateBar(){
+  const bar=$("#statebar"); if(!bar) return;
+  const opts=[{code:"all",label:"All"}, ...STATES.map(s=>({code:s.code,label:s.name}))];
+  bar.innerHTML=opts.map(o=>`<button class="fpill" data-state="${o.code}" aria-pressed="${SELECTED_STATE===o.code}">${o.label}</button>`).join("");
+  bar.querySelectorAll(".fpill").forEach(p=>p.addEventListener("click",()=>selectState(p.dataset.state)));
+}
+function buildAreaBar(){
+  const bar=$("#areabar"); if(!bar) return;
+  const areas=AREAS.filter(a=> SELECTED_STATE==="all" || a.state===SELECTED_STATE);
+  const opts=[{id:"all",label:"All areas"}, ...areas.map(a=>({id:a.id,label:a.name}))];
+  bar.innerHTML=opts.map(o=>`<button class="fpill sub" data-area="${o.id}" aria-pressed="${SELECTED_AREA===o.id}">${o.label}</button>`).join("");
+  bar.querySelectorAll(".fpill").forEach(p=>p.addEventListener("click",()=>selectArea(p.dataset.area)));
+}
+
+/* ---------------- URL params (state + area only) ---------------- */
+function readURL(){
+  try{
+    const p=new URLSearchParams(location.search);
+    // no filter params at all -> the default view (Washington · Index)
+    if(!p.has("state") && !p.has("area")){ SELECTED_STATE="WA"; SELECTED_AREA="index"; return; }
+    const st=(p.get("state")||"all").toUpperCase();
+    SELECTED_STATE = st==="ALL" ? "all" : (STATES.some(s=>s.code===st) ? st : "all");
+    const ar=p.get("area")||"all";
+    SELECTED_AREA = (ar==="all"||AREAS.some(a=>a.id===ar)) ? ar : "all";
+    // if an area is given without a state, infer the state from it
+    if(!p.has("state") && SELECTED_AREA!=="all"){ const a=AREAS.find(a=>a.id===SELECTED_AREA); if(a) SELECTED_STATE=a.state; }
+    // drop an area that isn't in the chosen state
+    if(SELECTED_STATE!=="all" && SELECTED_AREA!=="all"){ const a=AREAS.find(a=>a.id===SELECTED_AREA); if(!a||a.state!==SELECTED_STATE) SELECTED_AREA="all"; }
+  }catch(e){/* sandbox: no URL access — keep the default view */}
+}
+function syncURL(){
+  try{
+    const p=new URLSearchParams();
+    // default view (WA · Index) => clean URL; anything else is explicit & bookmarkable
+    if(!(SELECTED_STATE==="WA" && SELECTED_AREA==="index")){
+      p.set("state", SELECTED_STATE==="all" ? "all" : SELECTED_STATE.toLowerCase());
+      p.set("area", SELECTED_AREA);
+    }
+    const qs=p.toString();
+    history.replaceState(null, "", qs ? "?"+qs : location.pathname+location.hash);
+  }catch(e){/* sandbox: replaceState blocked */}
 }
 
 // build the today→+6 date pill row
@@ -874,6 +967,8 @@ function render(all){
   let shown=0;
   for(const d of all){
     const area=d.area;
+    if(SELECTED_STATE!=="all" && area.state!==SELECTED_STATE) continue;
+    if(SELECTED_AREA!=="all" && area.id!==SELECTED_AREA) continue;
 
     if(d.error){
       if(searching) continue;
@@ -972,8 +1067,11 @@ function render(all){
     content.appendChild(wrap); shown++;
   }
   if(!shown){
-    content.innerHTML=`<div class="state"><b>No crags match “${SEARCH.trim()}”</b>Try a crag, area, rock type, or tag — e.g. “basalt”, “steep”, “Index”.<br><button onclick="clearSearch()">Clear search</button></div>`;
+    const q=SEARCH.trim(), filtered=(SELECTED_STATE!=="all"||SELECTED_AREA!=="all");
+    const btns=(q?`<button onclick="clearSearch()">Clear search</button> `:"")+(filtered?`<button onclick="clearFilters()">Clear filters</button>`:"");
+    content.innerHTML=`<div class="state"><b>${q?`No crags match “${q}”`:"No crags match your filters"}</b>Try a different state, area, or search — e.g. “basalt”, “steep”, “Index”.<br>${btns||`<button onclick="clearSearch()">Clear search</button>`}</div>`;
   }
+  syncURL();
   const t=new Date();
   $("#upd").textContent = t.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
@@ -1005,7 +1103,10 @@ document.querySelectorAll(".units button").forEach(b=>{
 });
 $("#refresh").addEventListener("click",load);
 
-/* ---------------- date bar + search wiring ---------------- */
+/* ---------------- filter + date bar + search wiring ---------------- */
+readURL();                 // restore state/area filters from the URL (bookmarkable)
+buildStateBar();
+buildAreaBar();
 buildDateBar();
 // float the date bar once it's scrolled past the top of the viewport
 (function(){
