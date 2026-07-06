@@ -480,6 +480,67 @@ const AREAS = [
         aka:["The Cool Wall"],
         note:"The shade option when the south-facing walls are an oven — same quick-draining basalt, cooler aspect for a hot afternoon. Closed Jan 15–Aug 31 for nesting golden eagles." },
     ]},
+
+  /* ---- British Columbia (Okanagan sport + Purcell alpine) ---- */
+  { id:"skaha", name:"Skaha Bluffs", lat:49.4387, lon:-119.5506, rock:"Gneiss",
+    region:"Okanagan · Penticton, BC", tz:"America/Vancouver",
+    crags:[
+      { name:"Great White Wall", steep:.55, sun:.85, drain:.8, lagH:1,
+        tags:["Gneiss","Sport","Steep"],
+        walls:["Great White Wall","The Fortress","Grand Canyon"],
+        aka:["Great White"],
+        note:"The marquee steep gneiss of the Okanagan — semi-arid and sun-baked, so it dries within hours of the rare rain but greases up on a hot summer afternoon. The W/SW aspect brings it around late in the day." },
+      { name:"Red Tail Wall", steep:.45, sun:.6, drain:.8, lagH:1,
+        tags:["Gneiss","Sport","Morning sun"],
+        walls:["Red Tail Lower","Red Tail Upper"],
+        aka:["Red Tail"],
+        note:"East-facing: morning sun, then afternoon shade — the hot-day pick once the sun swings behind it. Fast-draining Okanagan gneiss, climbable soon after weather." },
+      { name:"Doctor's Wall", steep:.5, sun:.5, drain:.8, lagH:1,
+        tags:["Gneiss","Shadier","Summer pick"],
+        walls:["Doctor's Wall","Fern Gully","Morning Glory"],
+        aka:["Doctors Wall"],
+        note:"The cooler, shadier corner of the Bluffs (Fern Gully stays cool all day) — the summer-heat refuge. Same quick-draining gneiss, less direct sun." },
+    ]},
+  { id:"bugaboos", name:"The Bugaboos", lat:50.7383, lon:-116.7633, rock:"Alpine Granite",
+    region:"Purcell Mountains · BC", tz:"America/Vancouver",
+    crags:[
+      { name:"Snowpatch Spire", steep:.7, sun:.55, drain:.55, lagH:10,
+        tags:["Alpine granite","Big wall","Committing"],
+        walls:["Sunshine Crack","Kraus-McCarthy","Snowpatch Spire"],
+        aka:["Snowpatch"],
+        note:"High glaciated granite — a multi-day dry, warm window is the whole game: verglas and snow linger for days after a storm and the big faces stay cold. Sun and a light wind dry and warm the rock; a real weather system shuts it down entirely." },
+      { name:"Bugaboo Spire", steep:.6, sun:.5, drain:.55, lagH:10,
+        tags:["Alpine granite","Ridge","Committing"],
+        walls:["Northeast Ridge","Kain Route","West Face"],
+        aka:["Bugaboo Spire"],
+        note:"The Kain Route (NE ridge, 5.7) is the classic. The NE aspect is slow to warm and holds moisture longer — wants a settled high-pressure spell before the rock is dry and the approach safe." },
+      { name:"Pigeon Spire", steep:.55, sun:.6, drain:.6, lagH:9,
+        tags:["Alpine granite","Ridge","Exposed"],
+        walls:["West Ridge","Pigeon Spire"],
+        aka:["Pigeon"],
+        note:"The West Ridge (5.4) is the quintessential Bugs knife-edge. West-facing rock dries in the afternoon sun, but it's fully exposed — a light breeze is fine, a gale up here is serious. Alpine lag: give it dry days first." },
+    ]},
+
+  /* ---- Leavenworth (east-slope granite, WA) ---- */
+  { id:"leavenworth", name:"Leavenworth", lat:47.5560, lon:-120.6800, rock:"Granite",
+    region:"Icicle Creek · Leavenworth, WA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Snow Creek Wall", steep:.5, sun:.8, drain:.5, lagH:3,
+        tags:["Granite","Multi-pitch","Friction"],
+        walls:["Outer Space","Orbit","Iconoclast","Mary Jane Dihedral","Hyperspace"],
+        aka:["Snow Creek","SCW"],
+        note:"The 800-ft premier wall — high-friction east-slope granite with an SE exposure, so it takes morning sun and bakes June–August. Best in cool, dry spring and fall; the friction slab wants a low dew point." },
+      { name:"Castle Rock", steep:.55, sun:.7, drain:.55, lagH:1,
+        tags:["Granite","Multi-pitch","Roadside"],
+        walls:["Midway","Saber","Canary","Damnation Crack"],
+        aka:["Castle Rock"],
+        note:"The Tumwater Canyon roadside classic — W/SW-facing, so it comes around in the afternoon and dries fast in the dry east-slope air. Quick to climb after weather." },
+      { name:"Careno Crag", steep:.5, sun:.85, drain:.55, lagH:1,
+        tags:["Granite","Sport+trad","Sun-baked"],
+        walls:["Playground Point","Condor Buttress","Careno Crag"],
+        aka:["Careno"],
+        note:"South-facing with little shade, low in Icicle Creek — bakes hot and comes into season early. A cool-day or shoulder-season pick; drier and sunnier than the west-side crags." },
+    ]},
 ];
 
 /* ---- wall aspect: compass azimuth (deg, 0=N 90=E 180=S 270=W) the wall faces.
@@ -492,13 +553,16 @@ const FACES = {
   "Sunshine Wall":200, "The Feathers":"mixed", "Middle Coulee":0,
   "The Dihedrals":130, "Morning Glory Wall":90, "Christian Brothers · The Monument":"mixed",
   "Hanging Gardens":215, "North Face":350, "Red Wall · Trinity":220,
-  "Main Wall":180, "Castle Wall":205, "Cool Wall":0
+  "Main Wall":180, "Castle Wall":205, "Cool Wall":0,
+  "Great White Wall":235, "Red Tail Wall":90, "Doctor's Wall":40,
+  "Snowpatch Spire":"mixed", "Bugaboo Spire":45, "Pigeon Spire":270,
+  "Snow Creek Wall":135, "Castle Rock":235, "Careno Crag":180
 };
 AREAS.forEach(a=>a.crags.forEach(c=>{ c.face = (c.name in FACES) ? FACES[c.name] : "mixed"; }));
 
 /* ---- state / region each area belongs to (for the top filters) ---- */
 const STATES = [ {code:"WA", name:"Washington"}, {code:"BC", name:"British Columbia"}, {code:"OR", name:"Oregon"} ];
-const AREA_STATE = { index:"WA", squamish:"BC", exits:"WA", vantage:"WA", smith:"OR", broughton:"OR", troutcreek:"OR" };
+const AREA_STATE = { index:"WA", squamish:"BC", exits:"WA", vantage:"WA", leavenworth:"WA", smith:"OR", broughton:"OR", troutcreek:"OR", skaha:"BC", bugaboos:"BC" };
 AREAS.forEach(a=>{ a.state = AREA_STATE[a.id] || ""; });
 
 /* ---------------- units ---------------- */
