@@ -120,8 +120,8 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .viztrack i{flex:1;display:block}
 .viztrack i:first-child{border-radius:5px 0 0 5px}
 .viztrack i:last-child{border-radius:0 5px 5px 0}
-.viztrack.fric .fricell{cursor:pointer}
-.fricell.sel{outline:2px solid #fff;outline-offset:-1px}
+.viztrack.fric .fricell,.viztrack.sun .suncell{cursor:pointer}
+.fricell.sel,.suncell.sel{outline:2px solid #fff;outline-offset:-1px}
 .sunnow{position:absolute;top:-2px;height:15px;width:2px;background:rgba(255,255,255,.5);transform:translateX(-50%);pointer-events:none}
 .timemark{position:absolute;top:-3px;height:17px;width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);transform:translateX(-50%);pointer-events:none}
 .sunaxis{flex:1;min-width:0;display:flex;gap:1px}
@@ -541,6 +541,122 @@ const AREAS = [
         aka:["Careno"],
         note:"South-facing with little shade, low in Icicle Creek — bakes hot and comes into season early. A cool-day or shoulder-season pick; drier and sunnier than the west-side crags." },
     ]},
+
+  /* ---- California · Yosemite (Valley granite + Tuolumne high country) ---- */
+  { id:"yosemite", name:"Yosemite Valley", lat:37.7350, lon:-119.6000, rock:"Granite",
+    region:"Yosemite Valley · CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"El Capitan", steep:.7, sun:.8, drain:.4, lagH:3,
+        tags:["Granite","Big wall","Sun-baked"],
+        walls:["The Nose","Salathé Wall","Freerider","East Buttress"],
+        aka:["El Cap"],
+        note:"The 3,000-ft monolith — the SW/SE faces bake in the sun, so heat, not wet, is the usual enemy; in summer you chase shade or start before dawn. Cracks dry fast after the Valley's infrequent rain, but a real soaking lingers in the corners." },
+      { name:"Sentinel Rock", steep:.6, sun:.35, drain:.35, lagH:4,
+        tags:["Granite","North face","Shady"],
+        walls:["Steck-Salathé","West Face"],
+        aka:["Sentinel"],
+        note:"Mostly north-facing (bar the West Face) — cool and slow to dry, not in shape before June and best mid-August into September. The shade that makes it a summer refuge also keeps it damp after weather." },
+      { name:"Manure Pile Buttress", steep:.45, sun:.75, drain:.45, lagH:1,
+        tags:["Granite","Cragging","Sunny"],
+        walls:["After Six","Nutcracker"],
+        aka:["Ranger Rock","After Six"],
+        note:"The sunny beginner-classic buttress (After Six, Nutcracker) — south-facing, roadside, and quick to dry: the go-to when the big north walls are still seeping. Bakes on a hot afternoon." },
+    ]},
+  { id:"tuolumne", name:"Tuolumne Meadows", lat:37.8700, lon:-119.3900, rock:"Granite",
+    region:"High Country · Yosemite, CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Stately Pleasure Dome", steep:.35, sun:.8, drain:.6, lagH:1,
+        tags:["Granite","Slab","Roadside"],
+        walls:["Great White Book","South Crack","Death Crack"],
+        aka:["Stately Pleasure","Tenaya Lake"],
+        note:"Roadside SW-facing slab above Tenaya Lake (30-second approach). High, dry Sierra air dries it fast and the sun warms the friction — but the low-angle rock is dew-point sensitive, greasy until the sun is on it." },
+      { name:"Fairview Dome", steep:.55, sun:.45, drain:.55, lagH:3,
+        tags:["Granite","Dome","Cooler"],
+        walls:["Regular Route","North Face"],
+        aka:["Fairview"],
+        note:"The tallest dome — a 900-ft north-facing wall in view of the highway. Cool and slow to warm, a gift on a hot high-country afternoon but slow to come back after weather; wants the sun to have been on the rock." },
+      { name:"Cathedral Peak", steep:.5, sun:.6, drain:.6, lagH:4,
+        tags:["Granite","Alpine","Exposed"],
+        walls:["Southeast Buttress","Eichorn Pinnacle"],
+        aka:["Cathedral"],
+        note:"The classic SE-buttress alpine spire (~3,300 m). Exposed and high, so wind and afternoon thunderstorms are the real hazards; the SE aspect catches morning sun and dries quickly in the thin, dry air." },
+    ]},
+  { id:"joshuatree", name:"Joshua Tree", lat:34.0117, lon:-116.1666, rock:"Monzogranite",
+    region:"Mojave Desert · CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Intersection Rock", steep:.5, sun:.7, drain:.9, lagH:0,
+        tags:["Monzogranite","Trad+sport","Roadside"],
+        walls:["The Flake","Overhang Bypass","North Overhang"],
+        aka:["Hidden Valley","IR"],
+        note:"The 150-ft monolith at the heart of Hidden Valley — coarse monzogranite that dries instantly in the desert, so heat, not wet, sets the season (prime fall–spring, brutal in summer). All aspects: chase sun or shade around the rock." },
+      { name:"Hemingway Buttress", steep:.55, sun:.8, drain:.9, lagH:0,
+        tags:["Monzogranite","Crack","Sunny"],
+        walls:["Feudal Wall","White Lightning","Poodles Are People Too"],
+        aka:["Hemingway"],
+        note:"A SW-facing roadside buttress of classic cracks — sun-drenched and grippy, warm on a cold clear winter day but an oven by a summer afternoon. Dries the instant the rain stops." },
+      { name:"Echo Rock", steep:.4, sun:.65, drain:.9, lagH:0,
+        tags:["Monzogranite","Slab","Beginner-friendly"],
+        walls:["Echo Rock North Wall","Stichter Quits","Forbidden Paradise"],
+        aka:["Echo Cove"],
+        note:"Low-angle desert slabs plus a shady North Wall — pick the sunny side on a cold day, the shade in the heat. Bone-dry monzogranite; friction is best when it's cold and crisp." },
+    ]},
+  { id:"tahoe", name:"Lake Tahoe", lat:38.7950, lon:-120.1080, rock:"Granite",
+    region:"South Tahoe · CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Lover's Leap", steep:.5, sun:.75, drain:.5, lagH:2,
+        tags:["Granite","Multi-pitch","Dikes"],
+        walls:["Main Wall","East Wall","Central Wall","West Wall","Hogsback"],
+        aka:["The Leap"],
+        note:"The 600-ft south-facing dike wall above Strawberry — horizontal dikes give holds where the granite is otherwise blank. South aspect and low elevation keep it in season much of the year; sun dries it fast after weather." },
+      { name:"Sugarloaf", steep:.55, sun:.85, drain:.6, lagH:1,
+        tags:["Granite","Cracks","Winter pick"],
+        walls:["Sugarloaf Main","Pop Bottle"],
+        aka:["Sugarloaf Kyburz"],
+        note:"A 400-ft south-facing granite spire above Kyburz — low and sun-baked, the go-to when the higher crags are snowed in. Yosemite-smooth granite and straight cracks." },
+      { name:"Phantom Spires", steep:.5, sun:.75, drain:.6, lagH:1,
+        tags:["Granite","Spires","Exposed"],
+        walls:["Upper Spire","Middle Spire","Lower Spire"],
+        aka:["Phantoms"],
+        note:"Exposed SW-facing granite spires — great from late fall to early summer, sunny and quick to dry but fully in the wind. A light breeze is welcome, a gale is not." },
+    ]},
+  { id:"bishop", name:"Bishop", lat:37.4200, lon:-118.5800, rock:"Granite & Tuff",
+    region:"Eastern Sierra · Bishop, CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"Owens River Gorge", steep:.6, sun:.6, drain:.8, lagH:0,
+        tags:["Welded tuff","Sport","Gorge"],
+        walls:["Central Gorge","Upper Gorge","Lower Gorge","Dilling Wall"],
+        aka:["ORG","Owens Gorge"],
+        note:"West-coast sport mecca in Bishop's welded tuff — the gorge has both sunny and shady walls, so you pick a side by the season. High-desert dry: it comes back fast after the rare rain. Fall–winter–spring prime, hot in summer." },
+      { name:"The Buttermilks", steep:.6, sun:.7, drain:.9, lagH:0,
+        tags:["Granite","Highball","Bouldering"],
+        walls:["Grandpa Peabody","Iron Man Boulder","Peabody Boulders"],
+        aka:["Milks","Buttermilk"],
+        note:"Sharp quartz-monzonite highballs on the desert bench west of town — dries instantly and grips best when cold and dry. Full sun most of the day; friction fades the moment it warms up." },
+      { name:"Pine Creek Canyon", steep:.55, sun:.65, drain:.6, lagH:1,
+        tags:["Granite","Sport+trad","Higher"],
+        walls:["Pratt's Crack","Elderberry Buttress","Rick's Rocks"],
+        aka:["Pine Creek"],
+        note:"Granite sport and trad higher up a Sierra canyon — cooler than the valley floor and a good summer escape, with a mix of sun and shade by wall. Dries well in the dry Eastern Sierra air." },
+    ]},
+  { id:"needles", name:"The Needles", lat:36.1156, lon:-118.4989, rock:"Granite",
+    region:"Southern Sierra · Sequoia NF, CA", tz:"America/Los_Angeles",
+    crags:[
+      { name:"The Warlock", steep:.6, sun:.7, drain:.6, lagH:3,
+        tags:["Granite","Multi-pitch","Exposed"],
+        walls:["South Face","Warlock S Crack","Spooky"],
+        aka:["Warlock"],
+        note:"The crowning tower of the ridge — the South Face is the longest route around (7–8 pitches). South-facing and sunny at ~2,400 m, so it dries fast in the thin Sierra air, but it's exposed: afternoon thunderstorms and wind are the real hazards. Summer-only (the road is snowed in otherwise)." },
+      { name:"The Sorcerer", steep:.55, sun:.7, drain:.6, lagH:3,
+        tags:["Granite","Face","Classic"],
+        walls:["Thin Ice","Airy Interlude"],
+        aka:["Sorcerer"],
+        note:"Home to Thin Ice, the cirque testpiece — flawless SE-facing granite that catches morning sun and dries quickly. High and exposed; watch the afternoon build-up." },
+      { name:"The Wizard", steep:.55, sun:.7, drain:.6, lagH:3,
+        tags:["Granite","Face","Airy"],
+        walls:["Yellow Brick Road","Wizard Needle"],
+        aka:["Wizard"],
+        note:"Airy S-facing granite (Yellow Brick Road) on a spire high over the Kern River — sunny and quick to dry, but committing and fully exposed to weather. A settled high-pressure summer day is what you want." },
+    ]},
 ];
 
 /* ---- wall aspect: compass azimuth (deg, 0=N 90=E 180=S 270=W) the wall faces.
@@ -556,13 +672,19 @@ const FACES = {
   "Main Wall":180, "Castle Wall":205, "Cool Wall":0,
   "Great White Wall":235, "Red Tail Wall":90, "Doctor's Wall":40,
   "Snowpatch Spire":"mixed", "Bugaboo Spire":45, "Pigeon Spire":270,
-  "Snow Creek Wall":135, "Castle Rock":235, "Careno Crag":180
+  "Snow Creek Wall":135, "Castle Rock":235, "Careno Crag":180,
+  "El Capitan":175, "Sentinel Rock":350, "Manure Pile Buttress":190,
+  "Stately Pleasure Dome":205, "Fairview Dome":350, "Cathedral Peak":140,
+  "Intersection Rock":"mixed", "Hemingway Buttress":225, "Echo Rock":"mixed",
+  "Lover's Leap":175, "Sugarloaf":180, "Phantom Spires":215,
+  "Owens River Gorge":"mixed", "The Buttermilks":"mixed", "Pine Creek Canyon":190,
+  "The Warlock":175, "The Sorcerer":150, "The Wizard":185
 };
 AREAS.forEach(a=>a.crags.forEach(c=>{ c.face = (c.name in FACES) ? FACES[c.name] : "mixed"; }));
 
 /* ---- state / region each area belongs to (for the top filters) ---- */
-const STATES = [ {code:"WA", name:"Washington"}, {code:"BC", name:"British Columbia"}, {code:"OR", name:"Oregon"} ];
-const AREA_STATE = { index:"WA", squamish:"BC", exits:"WA", vantage:"WA", leavenworth:"WA", smith:"OR", broughton:"OR", troutcreek:"OR", skaha:"BC", bugaboos:"BC" };
+const STATES = [ {code:"WA", name:"Washington"}, {code:"BC", name:"British Columbia"}, {code:"OR", name:"Oregon"}, {code:"CA", name:"California"} ];
+const AREA_STATE = { index:"WA", squamish:"BC", exits:"WA", vantage:"WA", leavenworth:"WA", smith:"OR", broughton:"OR", troutcreek:"OR", skaha:"BC", bugaboos:"BC", yosemite:"CA", tuolumne:"CA", joshuatree:"CA", tahoe:"CA", bishop:"CA", needles:"CA" };
 AREAS.forEach(a=>{ a.state = AREA_STATE[a.id] || ""; });
 
 /* ---------------- units ---------------- */
@@ -969,7 +1091,8 @@ function dayVizHTML(d, crag){
   const sunSeg = sunCells.map(c=>{
     const v = Math.min(1, c.inten);
     const bg = v>0.10 ? `rgba(255,190,90,${(0.25+0.7*v).toFixed(2)})` : (c.up?"var(--line-strong)":"var(--bg2)");
-    return `<i style="background:${bg}"></i>`;
+    const sel = SELECTED_HOUR===c.h;
+    return `<i class="suncell${sel?" sel":""}" data-h="${c.h}" title="${fmtHour(c.h)}" style="background:${bg}"></i>`;
   }).join("");
 
   // --- friction bar (bucket colour per hour) ---
@@ -1201,14 +1324,14 @@ content.addEventListener("click", e=>{
   e.preventDefault();                           // dropdown button is the only expander
   const dd  = e.target.closest(".ddbtn");
   const day = e.target.closest(".day");
-  const fri = e.target.closest(".fricell");
+  const hourCell = e.target.closest(".fricell, .suncell");   // either bar picks the time
   if(dd){
     const det = summary.parentElement;
     det.open = !det.open;
     if(det.open) EXPANDED.add(det.dataset.crag); else EXPANDED.delete(det.dataset.crag);
     dd.setAttribute("aria-expanded", det.open ? "true" : "false");
-  } else if(fri && fri.dataset.h!=null){
-    selectHour(+fri.dataset.h);
+  } else if(hourCell && hourCell.dataset.h!=null){
+    selectHour(+hourCell.dataset.h);
   } else if(day && day.dataset.ts){
     selectDate(new Date(+day.dataset.ts));
   }

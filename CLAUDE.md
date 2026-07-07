@@ -3,9 +3,9 @@
 Project memory for Claude Code. Auto-loaded each session. Keep it short and high-signal; deep detail lives in `docs/` (referenced below), not here.
 
 ## What this is
-CragCast is a **PWA** (installable on iOS + Android from one codebase) that scores rock-climbing **friction conditions** for seven areas across the PNW and Oregon — Index, Squamish, The Exits, Vantage, Smith Rock, Broughton Bluff, Trout Creek — and their individual crags. It pulls live + historical weather from Open-Meteo and turns it into a per-crag send score. The whole app is one self-contained file.
+CragCast is a **PWA** (installable on iOS + Android from one codebase) that scores rock-climbing **friction conditions** for sixteen areas across Washington, British Columbia, Oregon, and California — Index, The Exits, Vantage, Leavenworth (WA); Squamish, Skaha Bluffs, the alpine Bugaboos (BC); Smith Rock, Broughton Bluff, Trout Creek (OR); Yosemite Valley, Tuolumne Meadows, Joshua Tree, Lake Tahoe, Bishop, The Needles (CA) — and their individual crags. It pulls live + historical weather from Open-Meteo and turns it into a per-crag send score. The whole app is one self-contained file.
 
-Each crag also carries a compass **aspect** (`face`) that drives a per-crag sun-exposure timeline shown alongside an hourly friction bar. The UI lets you pick a **date** (`SELECTED_DATE`, today→+6) and a **time-of-day** (`SELECTED_HOUR`); scores, readouts, and explanations recompute for that moment. There's fuzzy crag **search**, a per-area **best-bet**, and a 30-day dry-out archive.
+Each crag also carries a compass **aspect** (`face`) that drives a per-crag sun-exposure timeline shown alongside an hourly friction bar. The UI lets you pick a **date** (`SELECTED_DATE`, today→+6) and a **time-of-day** (`SELECTED_HOUR`); scores, readouts, and explanations recompute for that moment. A top-level **state → area** filter (`SELECTED_STATE`/`SELECTED_AREA`) narrows the view and is mirrored to the URL (`?state=&area=`) so views are bookmarkable — default is Washington · Index. There's also fuzzy crag **search**, a per-area **best-bet**, and a 30-day dry-out archive.
 
 ## Stack & layout
 - `index.html` — the entire app: UI, data fetch, scoring, archive view. No build step, no framework, no dependencies. Vanilla JS + inline CSS. Fonts: Space Grotesk (display) + IBM Plex Mono (data).
